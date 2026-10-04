@@ -1,0 +1,6 @@
+{
+  "name": "OpenERP Lite",
+  "description": "A comprehensive Vyapar-style ERP for small businesses: invoicing, GST billing, inventory, party ledgers, cash & bank, expenses, and financial reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
