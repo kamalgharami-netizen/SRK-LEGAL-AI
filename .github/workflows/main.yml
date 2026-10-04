@@ -1,0 +1,84 @@
+name: Build SRK Legal AI Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Vite application
+        run: npm run build
+
+      - name: Install Electron and Electron Builder
+        run: npm install --no-save electron electron-builder
+
+      - name: Create Electron main file
+        shell: pwsh
+        run: |
+          @'
+          const { app, BrowserWindow } = require('electron');
+          const path = require('path');
+
+          function createWindow() {
+            const win = new BrowserWindow({
+              width: 1400,
+              height: 900,
+              minWidth: 1000,
+              minHeight: 700,
+              webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false
+              }
+            });
+
+            win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+          }
+
+          app.whenReady().then(() => {
+            createWindow();
+
+            app.on('activate', () => {
+              if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow();
+              }
+            });
+          });
+
+          app.on('window-all-closed', () => {
+            if (process.platform !== 'darwin') {
+              app.quit();
+            }
+          });
+          '@ | Set-Content -Encoding UTF8 electron-main.cjs
+
+      - name: Create Electron package configuration
+        shell: pwsh
+        run: |
+          node -e "const fs=require('fs'); const p=require('./package.json'); p.main='electron-main.cjs'; p.build={appId:'com.srklegal.ai',productName:'SRK Legal AI',directories:{output:'release'},files:['dist/**/*','electron-main.cjs','package.json'],win:{target:[{target:'nsis',arch:['x64']}]},nsis:{oneClick:false,allowToChangeInstallationDirectory:true,createDesktopShortcut:true,createStartMenuShortcut:true}}; fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
+
+      - name: Build Windows Installer
+        run: npx electron-builder --win nsis
+
+      - name: Upload Windows Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: SRK-Legal-AI-Windows-Installer
+          path: release/*.exe
+          if-no-files-found: error
