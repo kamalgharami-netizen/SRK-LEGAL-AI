@@ -14,6 +14,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { LegalCase, HearingLog, CompanyProfile } from '../../types/erp';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface CasePrintModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export const CasePrintModal: React.FC<CasePrintModalProps> = ({
   company,
   initialMode = 'dossier',
 }) => {
+  const { t } = useLanguage();
   const [printMode, setPrintMode] = useState<'dossier' | 'cause_list'>(
     selectedCase ? initialMode : 'cause_list'
   );
@@ -156,12 +158,12 @@ export const CasePrintModal: React.FC<CasePrintModalProps> = ({
                   onClick={() => setPrintMode('dossier')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                     printMode === 'dossier'
-                      ? 'bg-white text-indigo-700 shadow-xs'
+                      ? 'bg-white text-indigo-700 shadow-xs font-bold'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <Scale className="h-3.5 w-3.5" />
-                  <span>Case Dossier & Order Sheet</span>
+                  <span>{t('Case Dossier & Order Sheet', 'কেস নথি ও আদেশনামা')}</span>
                 </button>
               )}
 
@@ -169,12 +171,12 @@ export const CasePrintModal: React.FC<CasePrintModalProps> = ({
                 onClick={() => setPrintMode('cause_list')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   printMode === 'cause_list'
-                    ? 'bg-white text-indigo-700 shadow-xs'
+                    ? 'bg-white text-indigo-700 shadow-xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Calendar className="h-3.5 w-3.5" />
-                <span>Cause List / Court Register</span>
+                <span>{t('Cause List / Court Register', 'কজ লিস্ট / আদালত রেজিস্টার')}</span>
               </button>
             </div>
 
@@ -184,12 +186,12 @@ export const CasePrintModal: React.FC<CasePrintModalProps> = ({
                 onChange={(e) => setCauseListFilter(e.target.value as any)}
                 className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg outline-none font-medium"
               >
-                <option value="today">Today's Hearings ({cases.filter((c) => c.nextHearingDate === todayStr).length})</option>
-                <option value="all">All Cases ({cases.length})</option>
-                <option value="mutation">Mutation Cases</option>
-                <option value="misc_case">Misc Cases</option>
-                <option value="rti">RTI Inquiries</option>
-                <option value="lr_appeal">LR Appeals</option>
+                <option value="today">{t("Today's Hearings", "আজকের শুনানি")} ({cases.filter((c) => c.nextHearingDate === todayStr).length})</option>
+                <option value="all">{t('All Cases', 'সকল কেস')} ({cases.length})</option>
+                <option value="mutation">{t('Mutation Cases', 'মিউটেশন কেস')}</option>
+                <option value="misc_case">{t('Misc Cases', 'মিস কেস')}</option>
+                <option value="rti">{t('RTI Inquiries', 'আরটিআই আবেদন')}</option>
+                <option value="lr_appeal">{t('LR Appeals', 'এলআর আপিল')}</option>
               </select>
             )}
           </div>
@@ -200,7 +202,7 @@ export const CasePrintModal: React.FC<CasePrintModalProps> = ({
               className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
             >
               <FileSpreadsheet className="h-3.5 w-3.5" />
-              <span>Export Excel (.xls)</span>
+              <span>{t('Export Excel (.xls)', 'এক্সেলে ডাউনলোড (.xls)')}</span>
             </button>
 
             <button
@@ -208,7 +210,7 @@ export const CasePrintModal: React.FC<CasePrintModalProps> = ({
               className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors"
             >
               <Printer className="h-3.5 w-3.5" />
-              <span>Print / Save as PDF</span>
+              <span>{t('Print / Save as PDF', 'প্রিন্ট / PDF')}</span>
             </button>
 
             <button

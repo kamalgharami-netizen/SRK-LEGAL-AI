@@ -10,6 +10,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { Transaction, CompanyProfile } from '../../types/erp';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface InvoicePrintModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   invoice,
   company,
 }) => {
+  const { t } = useLanguage();
   const [printFormat, setPrintFormat] = useState<'a4' | 'thermal'>('a4');
   const [copyType, setCopyType] = useState<'Original' | 'Duplicate' | 'Transporter'>('Original');
 
@@ -34,7 +36,10 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
   };
 
   const handleShareWhatsApp = () => {
-    const text = `Hello ${invoice.partyName},\n\nHere is your Invoice #${invoice.invoiceNo} from ${company.name}.\n\nTotal Amount: ${company.currencySymbol}${invoice.grandTotal.toLocaleString()}\nPaid: ${company.currencySymbol}${invoice.paidAmount.toLocaleString()}\nBalance Due: ${company.currencySymbol}${invoice.balanceDue.toLocaleString()}\n\nThank you for choosing ${company.name}!`;
+    const text = t(
+      `Hello ${invoice.partyName},\n\nHere is your Invoice #${invoice.invoiceNo} from ${company.name}.\n\nTotal Amount: ${company.currencySymbol}${invoice.grandTotal.toLocaleString()}\nPaid: ${company.currencySymbol}${invoice.paidAmount.toLocaleString()}\nBalance Due: ${company.currencySymbol}${invoice.balanceDue.toLocaleString()}\n\nThank you for choosing ${company.name}!`,
+      `শ্রদ্ধেয় ${invoice.partyName},\n\n${company.name}-এর পক্ষ থেকে আপনার ইনভয়েস #${invoice.invoiceNo}।\n\nমোট মূল্য: ${company.currencySymbol}${invoice.grandTotal.toLocaleString()}\nপরিশোধিত: ${company.currencySymbol}${invoice.paidAmount.toLocaleString()}\nবাকি: ${company.currencySymbol}${invoice.balanceDue.toLocaleString()}\n\nধন্যবাদ!`
+    );
     const cleanPhone = (invoice.partyPhone || '').replace(/\D/g, '');
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
@@ -53,23 +58,23 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 onClick={() => setPrintFormat('a4')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   printFormat === 'a4'
-                    ? 'bg-white text-indigo-700 shadow-xs'
+                    ? 'bg-white text-indigo-700 shadow-xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <FileText className="h-3.5 w-3.5" />
-                <span>GST Tax Invoice (A4)</span>
+                <span>{t('GST Tax Invoice (A4)', 'জিএসটি ট্যাক্স ইনভয়েস (A4)')}</span>
               </button>
               <button
                 onClick={() => setPrintFormat('thermal')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                   printFormat === 'thermal'
-                    ? 'bg-white text-indigo-700 shadow-xs'
+                    ? 'bg-white text-indigo-700 shadow-xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Receipt className="h-3.5 w-3.5" />
-                <span>Thermal Slip (80mm)</span>
+                <span>{t('Thermal Slip (80mm)', 'থার্মাল রসিদ (৮০মিমি)')}</span>
               </button>
             </div>
 
@@ -79,9 +84,9 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 onChange={(e) => setCopyType(e.target.value as any)}
                 className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 outline-none"
               >
-                <option value="Original">Original for Recipient</option>
-                <option value="Duplicate">Duplicate for Supplier</option>
-                <option value="Transporter">Transporter Copy</option>
+                <option value="Original">{t('Original for Recipient', 'মূল কপি (গ্রাহকের জন্য)')}</option>
+                <option value="Duplicate">{t('Duplicate for Supplier', 'অনুলিপি কপি (অফিস কপি)')}</option>
+                <option value="Transporter">{t('Transporter Copy', 'পরিবহনকারী কপি')}</option>
               </select>
             )}
           </div>
@@ -100,7 +105,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               className="inline-flex items-center gap-1.5 h-8 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors"
             >
               <Printer className="h-3.5 w-3.5" />
-              <span>Print / PDF</span>
+              <span>{t('Print / PDF', 'প্রিন্ট / PDF')}</span>
             </button>
 
             <button
@@ -128,7 +133,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                     {company.address}, {company.city}, {company.state} - {company.pincode}
                   </p>
                   <p className="text-slate-600 mt-1">
-                    Phone: <span className="font-mono">{company.phone}</span> | Email: {company.email}
+                    {t('Phone:', 'ফোন:')} <span className="font-mono">{company.phone}</span> | {t('Email:', 'ইমেইল:')} {company.email}
                   </p>
                   <div className="mt-2 text-slate-700 font-mono font-medium">
                     <span>GSTIN: </span><span className="font-semibold">{company.gstin}</span>
@@ -139,22 +144,30 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
                 <div className="text-right">
                   <div className="inline-block px-3 py-1 bg-slate-900 text-white font-bold tracking-wide uppercase text-sm rounded">
-                    {invoice.type === 'estimate' ? 'ESTIMATE / QUOTE' : 'TAX INVOICE'}
+                    {invoice.type === 'estimate'
+                      ? t('ESTIMATE / QUOTE', 'এস্টিমেট / কোটেশন')
+                      : t('TAX INVOICE', 'ট্যাক্স ইনভয়েস')}
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1 font-medium">({copyType})</p>
+                  <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                    ({copyType === 'Original'
+                      ? t('Original for Recipient', 'মূল কপি')
+                      : copyType === 'Duplicate'
+                      ? t('Duplicate for Supplier', 'অফিস কপি')
+                      : t('Transporter Copy', 'পরিবহন কপি')})
+                  </p>
                   
                   <div className="mt-4 text-right space-y-1 font-mono">
                     <div>
-                      <span className="text-slate-500 text-xs">Invoice No: </span>
+                      <span className="text-slate-500 text-xs">{t('Invoice No:', 'ইনভয়েস নং:')} </span>
                       <span className="font-bold text-slate-900">{invoice.invoiceNo}</span>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-xs">Date: </span>
+                      <span className="text-slate-500 text-xs">{t('Date:', 'তারিখ:')} </span>
                       <span className="text-slate-800">{invoice.date}</span>
                     </div>
                     {invoice.dueDate && (
                       <div>
-                        <span className="text-slate-500 text-xs">Due Date: </span>
+                        <span className="text-slate-500 text-xs">{t('Due Date:', 'পরিশোধের শেষ তারিখ:')} </span>
                         <span className="text-slate-800">{invoice.dueDate}</span>
                       </div>
                     )}
@@ -166,7 +179,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               <div className="grid grid-cols-2 gap-6 py-4 border-b border-slate-200">
                 <div>
                   <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] mb-1.5">
-                    Billed To:
+                    {t('Billed To:', 'গ্রাহকের বিবরণ:')}
                   </h4>
                   <div className="text-sm font-semibold text-slate-900">{invoice.partyName}</div>
                   {invoice.partyAddress && (
@@ -174,7 +187,7 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   )}
                   {invoice.partyPhone && (
                     <p className="text-slate-600 mt-1">
-                      Phone: <span className="font-mono">{invoice.partyPhone}</span>
+                      {t('Phone:', 'মোবাইল:')} <span className="font-mono">{invoice.partyPhone}</span>
                     </p>
                   )}
                   {invoice.partyGstin && (
@@ -184,21 +197,21 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   )}
                   {invoice.partyState && (
                     <p className="text-slate-600 mt-0.5">
-                      Place of Supply: <span className="font-medium">{invoice.partyState}</span>
+                      {t('Place of Supply:', 'সরবরাহের স্থান:')} <span className="font-medium">{invoice.partyState}</span>
                     </p>
                   )}
                 </div>
 
                 <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
                   <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] mb-1">
-                    Payment Status
+                    {t('Payment Status', 'পেমেন্ট অবস্থা')}
                   </h4>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500">Payment Mode:</span>
+                    <span className="text-slate-500">{t('Payment Mode:', 'পেমেন্ট মাধ্যম:')}</span>
                     <span className="font-semibold uppercase text-slate-800">{invoice.paymentMode}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500">Status:</span>
+                    <span className="text-slate-500">{t('Status:', 'অবস্থা:')}</span>
                     <span
                       className={`font-bold uppercase ${
                         invoice.status === 'paid'
@@ -208,11 +221,15 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                           : 'text-red-700'
                       }`}
                     >
-                      {invoice.status}
+                      {invoice.status === 'paid'
+                        ? t('PAID', 'পরিশোধিত')
+                        : invoice.status === 'partial'
+                        ? t('PARTIAL', 'আংশিক')
+                        : t('UNPAID', 'বকেয়া')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-200">
-                    <span className="text-slate-500">Balance Due:</span>
+                    <span className="text-slate-500">{t('Balance Due:', 'বকেয়া টাকা:')}</span>
                     <span className="font-mono font-bold text-slate-900">
                       {company.currencySymbol}{invoice.balanceDue.toLocaleString()}
                     </span>
@@ -226,13 +243,13 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   <thead>
                     <tr className="bg-slate-100 text-slate-700 font-semibold border-y border-slate-300 text-[11px] uppercase tracking-wider">
                       <th className="py-2.5 px-2 text-center w-8">#</th>
-                      <th className="py-2.5 px-3">Item Description</th>
-                      <th className="py-2.5 px-2 text-center">HSN</th>
-                      <th className="py-2.5 px-2 text-right">Qty</th>
-                      <th className="py-2.5 px-2 text-right">Rate</th>
-                      <th className="py-2.5 px-2 text-right">Disc %</th>
-                      <th className="py-2.5 px-2 text-right">Tax %</th>
-                      <th className="py-2.5 px-3 text-right">Amount</th>
+                      <th className="py-2.5 px-3">{t('Item Description', 'পণ্য বা সেবার বিবরণ')}</th>
+                      <th className="py-2.5 px-2 text-center">{t('HSN', 'এইচএসএন')}</th>
+                      <th className="py-2.5 px-2 text-right">{t('Qty', 'পরিমাণ')}</th>
+                      <th className="py-2.5 px-2 text-right">{t('Rate', 'দর')}</th>
+                      <th className="py-2.5 px-2 text-right">{t('Disc %', 'ছাড় %')}</th>
+                      <th className="py-2.5 px-2 text-right">{t('Tax %', 'কর %')}</th>
+                      <th className="py-2.5 px-3 text-right">{t('Amount', 'মোট')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -280,20 +297,20 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                   <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="text-[11px] font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 mb-2">
                       <CreditCard className="h-3.5 w-3.5 text-indigo-600" />
-                      <span>Bank & Payment Details</span>
+                      <span>{t('Bank & Payment Details', 'ব্যাংক ও পেমেন্ট বিবরণী')}</span>
                     </div>
                     <div className="text-xs space-y-1 text-slate-600">
-                      <div><span className="text-slate-400">Bank:</span> {company.bankName}</div>
-                      <div><span className="text-slate-400">A/C No:</span> <span className="font-mono font-semibold text-slate-800">{company.bankAccount}</span></div>
-                      <div><span className="text-slate-400">IFSC:</span> <span className="font-mono">{company.bankIfsc}</span></div>
-                      <div><span className="text-slate-400">Branch:</span> {company.bankBranch}</div>
-                      <div><span className="text-slate-400">UPI ID:</span> <span className="font-mono font-medium text-indigo-600">{company.upiId}</span></div>
+                      <div><span className="text-slate-400">{t('Bank:', 'ব্যাংক:')}</span> {company.bankName}</div>
+                      <div><span className="text-slate-400">{t('A/C No:', 'একাউন্ট নং:')}</span> <span className="font-mono font-semibold text-slate-800">{company.bankAccount}</span></div>
+                      <div><span className="text-slate-400">{t('IFSC:', 'আইএফএসসি:')}</span> <span className="font-mono">{company.bankIfsc}</span></div>
+                      <div><span className="text-slate-400">{t('Branch:', 'শাখা:')}</span> {company.bankBranch}</div>
+                      <div><span className="text-slate-400">{t('UPI ID:', 'ইউপিআই:')}</span> <span className="font-mono font-medium text-indigo-600">{company.upiId}</span></div>
                     </div>
                   </div>
 
                   {invoice.terms && (
                     <div className="text-[11px] text-slate-500 leading-relaxed">
-                      <span className="font-bold text-slate-700 block mb-1">Terms & Conditions:</span>
+                      <span className="font-bold text-slate-700 block mb-1">{t('Terms & Conditions:', 'শর্তাবলী:')}</span>
                       <pre className="whitespace-pre-line font-sans">{invoice.terms}</pre>
                     </div>
                   )}
@@ -301,19 +318,19 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
                 <div className="space-y-2 font-mono">
                   <div className="flex justify-between py-1 text-slate-600">
-                    <span className="font-sans">Sub Total:</span>
+                    <span className="font-sans">{t('Sub Total:', 'উপমোট:')}</span>
                     <span>{company.currencySymbol}{invoice.subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
 
                   {invoice.discountTotal > 0 && (
                     <div className="flex justify-between py-1 text-emerald-700">
-                      <span className="font-sans">Total Discount:</span>
+                      <span className="font-sans">{t('Total Discount:', 'মোট ছাড়:')}</span>
                       <span>-{company.currencySymbol}{invoice.discountTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                   )}
 
                   <div className="flex justify-between py-1 text-slate-600">
-                    <span className="font-sans">Taxable Value:</span>
+                    <span className="font-sans">{t('Taxable Value:', 'করযোগ্য মূল্য:')}</span>
                     <span>{company.currencySymbol}{invoice.taxableTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
 
@@ -340,25 +357,25 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
                   {invoice.roundOff !== 0 && (
                     <div className="flex justify-between py-0.5 text-slate-400 text-xs">
-                      <span className="font-sans">Round Off:</span>
+                      <span className="font-sans">{t('Round Off:', 'রাউন্ড অফ:')}</span>
                       <span>{invoice.roundOff > 0 ? `+${invoice.roundOff}` : invoice.roundOff}</span>
                     </div>
                   )}
 
                   <div className="flex justify-between py-2.5 border-y-2 border-slate-900 text-sm font-bold text-slate-900">
-                    <span className="font-sans uppercase">Grand Total:</span>
+                    <span className="font-sans uppercase">{t('Grand Total:', 'সর্বমোট প্রদেয়:')}</span>
                     <span className="text-base text-indigo-700">
                       {company.currencySymbol}{invoice.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
 
                   <div className="flex justify-between py-1 text-emerald-700 text-xs font-semibold">
-                    <span className="font-sans">Paid Amount:</span>
+                    <span className="font-sans">{t('Paid Amount:', 'পরিশোধিত টাকা:')}</span>
                     <span>{company.currencySymbol}{invoice.paidAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
 
                   <div className="flex justify-between py-1 text-rose-700 text-xs font-semibold">
-                    <span className="font-sans">Balance Due:</span>
+                    <span className="font-sans">{t('Balance Due:', 'বকেয়া টাকা:')}</span>
                     <span>{company.currencySymbol}{invoice.balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
@@ -367,12 +384,12 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
               {/* Footer Signatory */}
               <div className="mt-10 pt-6 border-t border-slate-200 flex justify-between items-end">
                 <div className="text-[11px] text-slate-400">
-                  This is a computer generated invoice. No signature required.
+                  {t('This is a computer generated invoice. No signature required.', 'এটি একটি কম্পিউটার জেনারেটেড ইনভয়েস।')}
                 </div>
                 <div className="text-center">
                   <div className="h-12 border-b border-dashed border-slate-400 w-44 mb-1"></div>
-                  <p className="text-[11px] font-semibold text-slate-700">For {company.name}</p>
-                  <p className="text-[10px] text-slate-400">Authorized Signatory</p>
+                  <p className="text-[11px] font-semibold text-slate-700">{company.name}</p>
+                  <p className="text-[10px] text-slate-400">{t('Authorized Signatory', 'অনুমোদিত স্বাক্ষরকারী')}</p>
                 </div>
               </div>
             </div>
@@ -385,22 +402,22 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
                 <p className="text-[10px] text-slate-600">Ph: {company.phone}</p>
                 <p className="text-[10px] font-semibold">GSTIN: {company.gstin}</p>
                 <div className="mt-1 font-bold text-xs uppercase bg-slate-100 py-0.5">
-                  TAX INVOICE
+                  {t('TAX INVOICE', 'ট্যাক্স ইনভয়েস')}
                 </div>
               </div>
 
               <div className="py-2 border-b border-dashed border-slate-400 text-[10px] space-y-0.5">
-                <div>Inv: <span className="font-bold">{invoice.invoiceNo}</span></div>
-                <div>Date: {invoice.date}</div>
-                <div>Customer: <span className="font-semibold">{invoice.partyName}</span></div>
+                <div>{t('Inv:', 'ইনভয়েস:')} <span className="font-bold">{invoice.invoiceNo}</span></div>
+                <div>{t('Date:', 'তারিখ:')} {invoice.date}</div>
+                <div>{t('Customer:', 'গ্রাহক:')} <span className="font-semibold">{invoice.partyName}</span></div>
                 {invoice.partyPhone && <div>Mob: {invoice.partyPhone}</div>}
               </div>
 
               <div className="py-2 border-b border-dashed border-slate-400">
                 <div className="flex justify-between font-bold pb-1 text-[10px] border-b border-slate-200">
-                  <span>ITEM</span>
-                  <span>QTY x RATE</span>
-                  <span>AMT</span>
+                  <span>{t('ITEM', 'পণ্য')}</span>
+                  <span>{t('QTY x RATE', 'পরিমাণ x দর')}</span>
+                  <span>{t('AMT', 'টাকা')}</span>
                 </div>
                 {invoice.items.map((it, i) => (
                   <div key={i} className="py-1">
@@ -417,30 +434,30 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
               <div className="py-2 border-b border-dashed border-slate-400 space-y-1 text-right text-[11px]">
                 <div className="flex justify-between">
-                  <span>Sub Total:</span>
+                  <span>{t('Sub Total:', 'উপমোট:')}</span>
                   <span>{company.currencySymbol}{invoice.subtotal.toLocaleString()}</span>
                 </div>
                 {invoice.discountTotal > 0 && (
                   <div className="flex justify-between text-emerald-700">
-                    <span>Discount:</span>
+                    <span>{t('Discount:', 'ছাড়:')}</span>
                     <span>-{company.currencySymbol}{invoice.discountTotal.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span>Total Tax:</span>
+                  <span>{t('Total Tax:', 'মোট কর:')}</span>
                   <span>+{company.currencySymbol}{invoice.totalTax.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between font-bold text-xs pt-1 border-t border-slate-300">
-                  <span>TOTAL:</span>
+                  <span>{t('TOTAL:', 'সর্বমোট:')}</span>
                   <span>{company.currencySymbol}{invoice.grandTotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-slate-700">
-                  <span>Paid ({invoice.paymentMode}):</span>
+                  <span>{t('Paid', 'পরিশোধিত')} ({invoice.paymentMode}):</span>
                   <span>{company.currencySymbol}{invoice.paidAmount.toLocaleString()}</span>
                 </div>
                 {invoice.balanceDue > 0 && (
                   <div className="flex justify-between font-bold text-rose-700">
-                    <span>Balance Due:</span>
+                    <span>{t('Balance Due:', 'বকেয়া:')}</span>
                     <span>{company.currencySymbol}{invoice.balanceDue.toLocaleString()}</span>
                   </div>
                 )}
@@ -448,8 +465,8 @@ export const InvoicePrintModal: React.FC<InvoicePrintModalProps> = ({
 
               <div className="text-center pt-3 text-[10px] text-slate-500">
                 <p>UPI: {company.upiId}</p>
-                <p className="mt-1 font-bold">THANK YOU! VISIT AGAIN</p>
-                <p className="text-[9px] mt-0.5">Powered by SRK ERP Software</p>
+                <p className="mt-1 font-bold">{t('THANK YOU! VISIT AGAIN', 'ধন্যবাদ! আবার আসবেন')}</p>
+                <p className="text-[9px] mt-0.5">SRK ERP Software</p>
               </div>
             </div>
           )}

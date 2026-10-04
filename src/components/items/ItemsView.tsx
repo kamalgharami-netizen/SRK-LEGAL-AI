@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Item, StockAdjustment, CompanyProfile, ItemType, UnitType } from '../../types/erp';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ItemsViewProps {
   items: Item[];
@@ -32,6 +33,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
   onAdjustStock,
   globalSearch,
 }) => {
+  const { t } = useLanguage();
   const [filterType, setFilterType] = useState<'all' | 'low_stock' | 'product' | 'service'>('all');
   const [localSearch, setLocalSearch] = useState('');
   const [showAdjustmentHistory, setShowAdjustmentHistory] = useState(false);
@@ -160,22 +162,34 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
   const handleConfirmAdjust = (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustTargetItem || adjustQty <= 0) return;
+
     onAdjustStock(adjustTargetItem.id, adjustQty, adjustReason, adjustType);
     setIsAdjustModalOpen(false);
   };
 
   const handleExportStockCSV = () => {
-    const headers = ['Item Name', 'Type', 'SKU / Barcode', 'HSN Code', 'Category', 'Unit', 'Purchase Cost', 'Sale Price', 'Current Stock', 'Stock Value (Cost)'];
-    const rows = filteredItems.map((i) => [
+    const headers = [
+      t('Item Name', 'পণ্যের নাম'),
+      t('Type', 'ধরণ'),
+      t('SKU', 'এসকেইউ'),
+      t('HSN', 'এইচএসএন'),
+      t('Category', 'বিভাগ'),
+      t('Sale Price', 'বিক্রয় মূল্য'),
+      t('Purchase Price', 'ক্রয় মূল্য'),
+      t('Stock Qty', 'স্টক পরিমাণ'),
+      t('Unit', 'একক'),
+      t('Stock Value', 'স্টক মূল্য'),
+    ];
+    const rows = items.map((i) => [
       `"${i.name}"`,
       `"${i.type}"`,
       `"${i.sku}"`,
       `"${i.hsnCode}"`,
       `"${i.category}"`,
-      `"${i.unit}"`,
-      i.purchasePrice,
       i.salePrice,
+      i.purchasePrice,
       i.stockQty,
+      `"${i.unit}"`,
       i.stockQty * i.purchasePrice,
     ]);
 
@@ -195,10 +209,13 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Items & Inventory Management
+            {t('Items & Inventory Management', 'পণ্য ও স্টক পরিচালনা')}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Catalog, stock level monitoring, low-stock reorder thresholds & valuations
+            {t(
+              'Catalog, stock level monitoring, low-stock reorder thresholds & valuations',
+              'পণ্য ক্যাটালগ, মজুত স্টক পর্যবেক্ষণ, কম স্টক সতর্কতা ও আর্থিক মূল্যায়ন'
+            )}
           </p>
         </div>
 
@@ -208,7 +225,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
             className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs transition-colors"
           >
             <History className="h-3.5 w-3.5" />
-            <span>Audit History</span>
+            <span>{t('Audit History', 'স্টক অডিট লগ')}</span>
           </button>
 
           <button
@@ -216,7 +233,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
             className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
-            <span>Export CSV</span>
+            <span>{t('Export CSV', 'সিএসভি ডাউনলোড')}</span>
           </button>
 
           <button
@@ -224,7 +241,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
             className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span>+ Add New Item</span>
+            <span>{t('+ Add New Item', '+ নতুন পণ্য / সেবা')}</span>
           </button>
         </div>
       </div>
@@ -232,28 +249,30 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
       {/* Valuation Summary Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-          <span className="text-xs text-slate-500">Stock Units on Hand</span>
+          <span className="text-xs text-slate-500">{t('Stock Units on Hand', 'হাতে থাকা মোট স্টক একক')}</span>
           <div className="mt-1 text-xl font-bold font-mono text-slate-900 tabular-nums">
-            {totalStockUnits.toLocaleString()} units
+            {totalStockUnits.toLocaleString()} {t('units', 'একক')}
           </div>
-          <span className="text-[11px] text-slate-400 font-mono">Across {items.length} SKUs</span>
+          <span className="text-[11px] text-slate-400 font-mono">
+            {t(`Across ${items.length} SKUs`, `মোট ${items.length} টি পণ্য`)}
+          </span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-          <span className="text-xs text-slate-500">Inventory Cost Value</span>
+          <span className="text-xs text-slate-500">{t('Inventory Cost Value', 'স্টকের মোট ক্রয়মূল্য')}</span>
           <div className="mt-1 text-xl font-bold font-mono text-indigo-700 tabular-nums">
             {company.currencySymbol}{totalCostValuation.toLocaleString()}
           </div>
-          <span className="text-[11px] text-slate-400 font-mono">At supplier purchase cost</span>
+          <span className="text-[11px] text-slate-400 font-mono">{t('At supplier purchase cost', 'সাপ্লায়ার ক্রয়মূল্য অনুযায়ী')}</span>
         </div>
 
         <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-          <span className="text-xs text-slate-500">Expected Retail Value</span>
+          <span className="text-xs text-slate-500">{t('Expected Retail Value', 'প্রত্যাশিত বিক্রয়মূল্য')}</span>
           <div className="mt-1 text-xl font-bold font-mono text-emerald-700 tabular-nums">
             {company.currencySymbol}{totalRetailValuation.toLocaleString()}
           </div>
           <span className="text-[11px] text-slate-400 font-mono">
-            +{company.currencySymbol}{(totalRetailValuation - totalCostValuation).toLocaleString()} gross margin
+            +{company.currencySymbol}{(totalRetailValuation - totalCostValuation).toLocaleString()} {t('gross margin', 'মোট লাভ')}
           </span>
         </div>
       </div>
@@ -264,28 +283,28 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
           <div className="flex justify-between items-center">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
               <History className="h-4 w-4 text-indigo-600" />
-              <span>Stock Adjustment Logs (Manual Corrections)</span>
+              <span>{t('Stock Adjustment Logs (Manual Corrections)', 'ম্যানুয়াল স্টক সমন্বয় ইতিহাস')}</span>
             </h3>
             <button
               onClick={() => setShowAdjustmentHistory(false)}
               className="text-xs text-slate-400 hover:text-slate-600"
             >
-              Close
+              {t('Close', 'বন্ধ করুন')}
             </button>
           </div>
 
           {adjustments.length === 0 ? (
-            <p className="text-xs text-slate-500">No manual adjustments recorded yet.</p>
+            <p className="text-xs text-slate-500">{t('No manual adjustments recorded yet.', 'কোনো স্টক সমন্বয় রেকর্ড নেই।')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="text-slate-500 border-b border-slate-200 uppercase text-[10px]">
-                    <th className="py-2 px-3">Date</th>
-                    <th className="py-2 px-3">Item</th>
-                    <th className="py-2 px-3">Type</th>
-                    <th className="py-2 px-3 text-right">Qty Delta</th>
-                    <th className="py-2 px-4">Reason</th>
+                    <th className="py-2 px-3">{t('Date', 'তারিখ')}</th>
+                    <th className="py-2 px-3">{t('Item', 'পণ্য')}</th>
+                    <th className="py-2 px-3">{t('Type', 'ধরণ')}</th>
+                    <th className="py-2 px-3 text-right">{t('Qty Delta', 'পরিমাণ')}</th>
+                    <th className="py-2 px-4">{t('Reason', 'কারণ')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -299,7 +318,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                             adj.type === 'add' ? 'text-emerald-700' : 'text-rose-700'
                           }`}
                         >
-                          {adj.type === 'add' ? '+ Added' : '- Reduced'}
+                          {adj.type === 'add' ? t('+ Added', '+ বৃদ্ধি') : t('- Reduced', '- হ্রাস')}
                         </span>
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-bold">
@@ -327,7 +346,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                   filterType === 'all' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600'
                 }`}
               >
-                All ({items.length})
+                {t('All', 'সকল')} ({items.length})
               </button>
               <button
                 onClick={() => setFilterType('low_stock')}
@@ -335,7 +354,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                   filterType === 'low_stock' ? 'bg-white text-amber-700 shadow-xs font-semibold' : 'text-slate-600'
                 }`}
               >
-                Low Stock ({items.filter((i) => i.type === 'product' && i.stockQty <= i.minStockAlert).length})
+                {t('Low Stock', 'কম স্টক')} ({items.filter((i) => i.type === 'product' && i.stockQty <= i.minStockAlert).length})
               </button>
               <button
                 onClick={() => setFilterType('product')}
@@ -343,7 +362,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                   filterType === 'product' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600'
                 }`}
               >
-                Products
+                {t('Products', 'পণ্যসমূহ')}
               </button>
               <button
                 onClick={() => setFilterType('service')}
@@ -351,7 +370,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                   filterType === 'service' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600'
                 }`}
               >
-                Services
+                {t('Services', 'সেবাসমূহ')}
               </button>
             </div>
           </div>
@@ -360,7 +379,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by name, SKU/barcode, HSN..."
+              placeholder={t('Search by name, SKU/barcode, HSN...', 'নাম, বারকোড বা এইচএসএন দিয়ে খুঁজুন...')}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               className="w-full h-9 pl-9 pr-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none"
@@ -373,13 +392,13 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                <th className="py-2.5 px-4">Item Details</th>
-                <th className="py-2.5 px-3">SKU / Barcode</th>
-                <th className="py-2.5 px-3 text-center">HSN Code</th>
-                <th className="py-2.5 px-3 text-right">Sale Price</th>
-                <th className="py-2.5 px-3 text-right">Purchase Cost</th>
-                <th className="py-2.5 px-3 text-right">Stock Qty</th>
-                <th className="py-2.5 px-4 text-right">Actions</th>
+                <th className="py-2.5 px-4">{t('Item Details', 'পণ্যের নাম ও বিবরণ')}</th>
+                <th className="py-2.5 px-3">{t('SKU / Barcode', 'বারকোড / SKU')}</th>
+                <th className="py-2.5 px-3 text-center">{t('HSN Code', 'এইচএসএন')}</th>
+                <th className="py-2.5 px-3 text-right">{t('Sale Price', 'বিক্রয় মূল্য')}</th>
+                <th className="py-2.5 px-3 text-right">{t('Purchase Cost', 'ক্রয় মূল্য')}</th>
+                <th className="py-2.5 px-3 text-right">{t('Stock Qty', 'স্টক পরিমাণ')}</th>
+                <th className="py-2.5 px-4 text-right">{t('Actions', 'পদক্ষেপ')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -422,7 +441,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
 
                     <td className="py-3 px-3 text-right">
                       {item.type === 'service' ? (
-                        <span className="text-slate-400 font-medium">Service (N/A)</span>
+                        <span className="text-slate-400 font-medium">{t('Service (N/A)', 'সেবা (স্টক নেই)')}</span>
                       ) : (
                         <div className="inline-block">
                           <span
@@ -434,7 +453,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                           </span>
                           {isLow && (
                             <span className="text-[10px] text-amber-700 block font-semibold">
-                              Low Stock! (Min {item.minStockAlert})
+                              {t(`Low Stock! (Min ${item.minStockAlert})`, `কম স্টক! (ন্যূনতম ${item.minStockAlert})`)}
                             </span>
                           )}
                         </div>
@@ -446,29 +465,28 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                         {item.type === 'product' && (
                           <button
                             onClick={() => handleOpenAdjustStock(item)}
-                            title="Adjust Stock"
+                            title={t('Adjust Stock', 'স্টক সমন্বয়')}
                             className="px-2 py-1 text-[11px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded"
                           >
-                            Adjust
+                            {t('Adjust', 'স্টক সমন্বয়')}
                           </button>
                         )}
-
                         <button
                           onClick={() => openEditItemModal(item)}
                           className="px-2 py-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded"
                         >
-                          Edit
+                          {t('Edit', 'সম্পাদনা')}
                         </button>
-
                         <button
                           onClick={() => {
-                            if (window.confirm(`Delete ${item.name}?`)) {
+                            const conf = t(`Delete ${item.name}?`, `আপনি কি ${item.name} পণ্যটি মুছে ফেলতে চান?`);
+                            if (window.confirm(conf)) {
                               onDeleteItem(item.id);
                             }
                           }}
-                          className="px-2 py-1 text-[11px] text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50"
+                          className="px-2 py-1 text-[11px] text-rose-600 hover:bg-rose-50 rounded"
                         >
-                          Delete
+                          {t('Delete', 'মুছুন')}
                         </button>
                       </div>
                     </td>
@@ -486,7 +504,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
           <div className="w-full max-w-lg bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
               <h3 className="text-sm font-bold text-slate-900">
-                {editingItem ? 'Edit Item Details' : 'Add New Product or Service'}
+                {editingItem ? t('Edit Item Details', 'পণ্যের তথ্য সংশোধন') : t('Add New Item / Service', 'নতুন পণ্য / সেবা তৈরি')}
               </h3>
               <button
                 onClick={() => setIsItemModalOpen(false)}
@@ -500,70 +518,73 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Item Name *
+                    {t('Item / Service Name *', 'পণ্য বা সেবার নাম *')}
                   </label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Wireless Mouse, Corrugated Box, Consulting"
+                    placeholder={t('e.g. Legal Deed Drafting or Land Registration', 'যেমন: জমির দলিল রেজিস্ট্রি বা ড্রাফটিং')}
                     className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Item Type</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    {t('Item Type', 'আইটেমের ধরণ')}
+                  </label>
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value as ItemType)}
                     className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                   >
-                    <option value="product">Product (Physical Stock)</option>
-                    <option value="service">Service (Non-inventory)</option>
+                    <option value="product">{t('Physical Product (Stockable)', 'ভৌত পণ্য (স্টকযোগ্য)')}</option>
+                    <option value="service">{t('Professional Service / Fee', 'পেশাগত সেবা / ফি')}</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    {t('Category', 'বিভাগ বা শ্রেণী')}
+                  </label>
                   <input
                     type="text"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    placeholder="e.g. Electronics, Hardware"
+                    placeholder="General / Legal"
                     className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Item Code / SKU / Barcode
+                    {t('SKU / Item Code', 'এসকেইউ বা কোড')}
                   </label>
                   <input
                     type="text"
                     value={sku}
                     onChange={(e) => setSku(e.target.value)}
-                    placeholder="e.g. BAR-001"
                     className="w-full h-9 px-3 text-xs font-mono bg-white border border-slate-300 rounded-lg outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    HSN / SAC Code
+                    {t('HSN / SAC Code', 'এইচএসএন / এসএসি কোড')}
                   </label>
                   <input
                     type="text"
                     value={hsnCode}
                     onChange={(e) => setHsnCode(e.target.value)}
-                    placeholder="e.g. 8471"
+                    placeholder="e.g. 998211"
                     className="w-full h-9 px-3 text-xs font-mono bg-white border border-slate-300 rounded-lg outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Sale Price ({company.currencySymbol}) *
+                    {t('Sale Price', 'বিক্রয় মূল্য')} ({company.currencySymbol}) *
                   </label>
                   <input
                     type="number"
@@ -578,7 +599,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Purchase Cost ({company.currencySymbol})
+                    {t('Purchase Cost', 'ক্রয় খরচ')} ({company.currencySymbol})
                   </label>
                   <input
                     type="number"
@@ -592,14 +613,14 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    GST Tax Rate (%)
+                    {t('GST Tax Rate (%)', 'জিএসটি করের হার (%)')}
                   </label>
                   <select
                     value={taxRate}
                     onChange={(e) => setTaxRate(parseFloat(e.target.value) || 0)}
                     className="w-full h-9 px-3 text-xs font-mono bg-white border border-slate-300 rounded-lg outline-none"
                   >
-                    <option value="0">0% (Exempt)</option>
+                    <option value="0">0% ({t('Exempt', 'করমুক্ত')})</option>
                     <option value="5">5%</option>
                     <option value="12">12%</option>
                     <option value="18">18%</option>
@@ -609,21 +630,22 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Unit of Measurement
+                    {t('Unit of Measurement', 'পরিমাপের একক')}
                   </label>
                   <select
                     value={unit}
                     onChange={(e) => setUnit(e.target.value as UnitType)}
                     className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                   >
-                    <option value="PCS">PCS (Pieces)</option>
-                    <option value="BOX">BOX (Boxes)</option>
-                    <option value="KG">KG (Kilograms)</option>
-                    <option value="LTR">LTR (Litres)</option>
-                    <option value="MTR">MTR (Metres)</option>
-                    <option value="BAG">BAG (Bags)</option>
-                    <option value="SET">SET (Sets)</option>
-                    <option value="NOS">NOS (Numbers)</option>
+                    <option value="SERVICE">{t('SERVICE (Professional)', 'SERVICE (পেশাগত সেবা)')}</option>
+                    <option value="PCS">{t('PCS (Pieces)', 'PCS (পিস)')}</option>
+                    <option value="BOX">{t('BOX (Boxes)', 'BOX (বক্স)')}</option>
+                    <option value="KG">{t('KG (Kilograms)', 'KG (কেজি)')}</option>
+                    <option value="LTR">{t('LTR (Litres)', 'LTR (লিটার)')}</option>
+                    <option value="MTR">{t('MTR (Metres)', 'MTR (মিটার)')}</option>
+                    <option value="BAG">{t('BAG (Bags)', 'BAG (ব্যাগ)')}</option>
+                    <option value="SET">{t('SET (Sets)', 'SET (সেট)')}</option>
+                    <option value="NOS">{t('NOS (Numbers)', 'NOS (সংখ্যা)')}</option>
                   </select>
                 </div>
 
@@ -631,7 +653,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                   <>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Current Stock Quantity
+                        {t('Current Stock Quantity', 'বর্তমান মজুত পরিমাণ')}
                       </label>
                       <input
                         type="number"
@@ -644,7 +666,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Low Stock Alert Level
+                        {t('Low Stock Alert Level', 'ন্যূনতম স্টক সতর্কতা')}
                       </label>
                       <input
                         type="number"
@@ -663,13 +685,13 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                   onClick={() => setIsItemModalOpen(false)}
                   className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
-                  Cancel
+                  {t('Cancel', 'বাতিল')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs"
                 >
-                  Save Item
+                  {t('Save Item', 'সংরক্ষণ')}
                 </button>
               </div>
             </form>
@@ -683,7 +705,7 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
           <div className="w-full max-w-sm bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Adjust Inventory Stock</h3>
+                <h3 className="text-sm font-bold text-slate-900">{t('Adjust Inventory Stock', 'স্টক সমন্বয় করুন')}</h3>
                 <p className="text-xs text-slate-500">{adjustTargetItem.name}</p>
               </div>
               <button
@@ -696,43 +718,43 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
 
             <form onSubmit={handleConfirmAdjust} className="p-5 space-y-4">
               <div>
-                <span className="text-xs text-slate-500 block">Current Stock:</span>
+                <span className="text-xs text-slate-500 block">{t('Current Stock:', 'বর্তমান মজুত:')}</span>
                 <span className="font-mono font-bold text-base text-slate-900">
                   {adjustTargetItem.stockQty} {adjustTargetItem.unit}
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Action</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('Action', 'কার্যক্রম')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setAdjustType('add')}
                     className={`py-2 text-xs font-semibold rounded-lg border transition-colors ${
                       adjustType === 'add'
-                        ? 'bg-emerald-50 border-emerald-500 text-emerald-700'
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-bold'
                         : 'bg-white border-slate-200 text-slate-600'
                     }`}
                   >
-                    + Add Stock (Increase)
+                    {t('+ Add Stock', '+ স্টক বৃদ্ধি')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setAdjustType('reduce')}
                     className={`py-2 text-xs font-semibold rounded-lg border transition-colors ${
                       adjustType === 'reduce'
-                        ? 'bg-rose-50 border-rose-500 text-rose-700'
+                        ? 'bg-rose-50 border-rose-500 text-rose-700 font-bold'
                         : 'bg-white border-slate-200 text-slate-600'
                     }`}
                   >
-                    - Reduce Stock (Decrease)
+                    {t('- Reduce Stock', '- স্টক হ্রাস')}
                   </button>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Quantity ({adjustTargetItem.unit})
+                  {t('Quantity', 'পরিমাণ')} ({adjustTargetItem.unit})
                 </label>
                 <input
                   type="number"
@@ -746,17 +768,17 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Reason</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">{t('Reason', 'সমন্বয়ের কারণ')}</label>
                 <select
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
                   className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                 >
-                  <option value="Stock replenishment">Stock replenishment</option>
-                  <option value="Physical recount correction">Physical recount correction</option>
-                  <option value="Damaged / Expired goods">Damaged / Expired goods</option>
-                  <option value="Gift / Sample dispatch">Gift / Sample dispatch</option>
-                  <option value="Internal usage">Internal business usage</option>
+                  <option value="Stock replenishment">{t('Stock replenishment', 'স্টক যোগ / রিফিল')}</option>
+                  <option value="Physical recount correction">{t('Physical recount correction', 'শারীরিক গণনা সংশোধন')}</option>
+                  <option value="Damaged / Expired goods">{t('Damaged / Expired goods', 'নষ্ট বা মেয়াদোত্তীর্ণ পণ্য')}</option>
+                  <option value="Gift / Sample dispatch">{t('Gift / Sample dispatch', 'উপহার বা নমুনা প্রদান')}</option>
+                  <option value="Internal usage">{t('Internal business usage', 'অভ্যন্তরীণ অফিসের ব্যবহার')}</option>
                 </select>
               </div>
 
@@ -766,13 +788,13 @@ export const ItemsView: React.FC<ItemsViewProps> = ({
                   onClick={() => setIsAdjustModalOpen(false)}
                   className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
-                  Cancel
+                  {t('Cancel', 'বাতিল')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs"
                 >
-                  Save Adjustment
+                  {t('Save Adjustment', 'সংরক্ষণ করুন')}
                 </button>
               </div>
             </form>

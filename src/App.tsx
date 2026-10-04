@@ -30,9 +30,11 @@ import { InvoicePrintModal } from './components/sales/InvoicePrintModal';
 import { QuickPaymentModal } from './components/common/QuickPaymentModal';
 import { CaseTrackerView } from './components/cases/CaseTrackerView';
 import { DailyTasksDrawer } from './components/cases/DailyTasksDrawer';
+import { WorkDashboardView } from './components/dashboard/WorkDashboardView';
 
 export default function App() {
-  // Navigation & global search
+  // Navigation, mode & global search
+  const [appMode, setAppMode] = useState<'erp' | 'work'>('erp');
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [globalSearch, setGlobalSearch] = useState<string>('');
   const [caseSubTab, setCaseSubTab] = useState<string>('all');
@@ -258,10 +260,83 @@ export default function App() {
   };
 
   const handleOpenNewCase = (type?: CaseType) => {
+    setAppMode('work');
     if (type) {
       setCaseSubTab(type);
     }
     setActiveTab('cases');
+  };
+
+  const handleSwitchAppMode = (mode: 'erp' | 'work') => {
+    setAppMode(mode);
+    if (mode === 'erp') {
+      if (activeTab === 'work_dashboard' || activeTab === 'cases') {
+        setActiveTab('dashboard');
+      }
+    } else {
+      if (
+        activeTab === 'dashboard' ||
+        activeTab === 'sales' ||
+        activeTab === 'purchases' ||
+        activeTab === 'cash-bank' ||
+        activeTab === 'expenses' ||
+        activeTab === 'items' ||
+        activeTab === 'reports' ||
+        activeTab === 'settings'
+      ) {
+        setActiveTab('work_dashboard');
+      }
+    }
+  };
+
+  const handleOpenBillingForCase = (c: LegalCase) => {
+    const matchingParty = parties.find((p) => p.id === c.partyId);
+    const feeInvoice: Transaction = {
+      id: `tx_${Date.now()}`,
+      type: 'sale_invoice',
+      invoiceNo: StorageService.getNextInvoiceNumber('sale_invoice'),
+      date: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+      partyId: c.partyId,
+      partyName: c.partyName,
+      partyPhone: c.partyPhone,
+      partyGstin: matchingParty?.gstin,
+      items: [
+        {
+          id: `row_${Date.now()}_1`,
+          itemName: `Legal & Revenue Professional Fee: Case #${c.caseNo} (${c.type.toUpperCase()})`,
+          hsnCode: '998211',
+          qty: 1,
+          unit: 'SERVICE',
+          unitPrice: 3500,
+          discountPercent: 0,
+          discountAmount: 0,
+          taxRate: 18,
+          taxableAmount: 3500,
+          taxAmount: 630,
+          totalAmount: 4130,
+        },
+      ],
+      subtotal: 3500,
+      discountTotal: 0,
+      taxableTotal: 3500,
+      cgstTotal: 315,
+      sgstTotal: 315,
+      igstTotal: 0,
+      totalTax: 630,
+      roundOff: 0,
+      grandTotal: 4130,
+      paidAmount: 0,
+      balanceDue: 4130,
+      paymentMode: 'credit',
+      status: 'unpaid',
+      notes: `Matter: ${c.title}. Court/Authority: ${c.courtOrAuthority}. Docket/App No: ${c.applicationNo || c.docketNo || 'N/A'}. Broker: ${c.brokerName || 'None'}`,
+      createdAt: new Date().toISOString(),
+    };
+    setAppMode('erp');
+    setInvoiceEditorType('sale_invoice');
+    setInitialEditInvoice(feeInvoice);
+    setIsInvoiceEditorOpen(true);
   };
 
   // Daily Tasks Handlers
@@ -315,11 +390,22 @@ export default function App() {
       <Navbar
         company={company}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'work_dashboard' || tab === 'cases') {
+            setAppMode('work');
+          } else if (tab !== 'parties') {
+            setAppMode('erp');
+          }
+        }}
+        appMode={appMode}
+        setAppMode={handleSwitchAppMode}
         onOpenNewSale={openNewSale}
         onOpenNewPurchase={openNewPurchase}
+        onOpenNewCase={handleOpenNewCase}
         lowStockItems={lowStockItems}
         pendingTasksCount={pendingTasksCount}
+        todayHearingsCount={todayHearingsCount}
         onOpenDailyTasksDrawer={() => setIsDailyTasksDrawerOpen(true)}
         globalSearch={globalSearch}
         setGlobalSearch={setGlobalSearch}
@@ -330,9 +416,22 @@ export default function App() {
         {/* Left Sidebar */}
         <Sidebar
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            if (tab === 'work_dashboard' || tab === 'cases') {
+              setAppMode('work');
+            } else if (tab !== 'parties') {
+              setAppMode('erp');
+            }
+          }}
+          appMode={appMode}
+          setAppMode={handleSwitchAppMode}
           caseSubTab={caseSubTab}
-          setCaseSubTab={setCaseSubTab}
+          setCaseSubTab={(sub) => {
+            setCaseSubTab(sub);
+            setAppMode('work');
+            setActiveTab('cases');
+          }}
           lowStockCount={lowStockCount}
           totalReceivables={totalReceivables}
           activeCasesCount={cases.length}
@@ -342,6 +441,7 @@ export default function App() {
           rtiCount={cases.filter((c) => c.type === 'rti').length}
           lrAppealCount={cases.filter((c) => c.type === 'lr_appeal').length}
           currencySymbol={company.currencySymbol}
+          onOpenDailyTasksDrawer={() => setIsDailyTasksDrawerOpen(true)}
         />
 
         {/* Viewport Workspace */}
@@ -357,15 +457,62 @@ export default function App() {
               company={company}
               onOpenNewSale={openNewSale}
               onOpenNewPurchase={openNewPurchase}
-              onOpenAddParty={() => setActiveTab('parties')}
-              onOpenAddItem={() => setActiveTab('items')}
+              onOpenAddParty={() => {
+                setAppMode('erp');
+                setActiveTab('parties');
+              }}
+              onOpenAddItem={() => {
+                setAppMode('erp');
+                setActiveTab('items');
+              }}
               onOpenNewCase={handleOpenNewCase}
               onToggleTask={handleToggleTask}
               onOpenDailyTasksDrawer={() => setIsDailyTasksDrawerOpen(true)}
               onOpenRecordPayment={handleOpenPaymentForInvoice}
               onOpenPrintInvoice={handleOpenPrint}
-              setActiveTab={setActiveTab}
-              setActiveCaseSubTab={setCaseSubTab}
+              setActiveTab={(tab) => {
+                setActiveTab(tab);
+                if (tab === 'cases' || tab === 'work_dashboard') setAppMode('work');
+                else setAppMode('erp');
+              }}
+              setActiveCaseSubTab={(sub) => {
+                setCaseSubTab(sub);
+                setAppMode('work');
+                setActiveTab('cases');
+              }}
+              onSwitchToWork={() => handleSwitchAppMode('work')}
+            />
+          )}
+
+          {activeTab === 'work_dashboard' && (
+            <WorkDashboardView
+              cases={cases}
+              tasks={tasks}
+              parties={parties}
+              company={company}
+              onOpenNewCase={handleOpenNewCase}
+              onSelectCase={(c) => {
+                setAppMode('work');
+                setCaseSubTab(c.type);
+                setActiveTab('cases');
+              }}
+              onToggleTask={handleToggleTask}
+              onOpenDailyTasksDrawer={() => setIsDailyTasksDrawerOpen(true)}
+              onNavigateCaseCategory={(cat) => {
+                setAppMode('work');
+                setCaseSubTab(cat);
+                setActiveTab('cases');
+              }}
+              onSwitchToErp={() => handleSwitchAppMode('erp')}
+              onOpenPrintCauseList={() => {
+                setAppMode('work');
+                setCaseSubTab('cause_list');
+                setActiveTab('cases');
+              }}
+              onExportExcel={() => {
+                setAppMode('work');
+                setActiveTab('cases');
+              }}
             />
           )}
 
@@ -381,6 +528,7 @@ export default function App() {
               onOpenPartyLedger={(partyId) => {
                 setActiveTab('parties');
               }}
+              onOpenBillingForCase={handleOpenBillingForCase}
               onAddTaskForCase={(caseId, caseNo, title, dueDate) => {
                 const newTask: DailyTask = {
                   id: `task_${Date.now()}`,

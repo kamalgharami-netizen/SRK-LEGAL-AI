@@ -22,6 +22,7 @@ import {
   UnitType,
 } from '../../types/erp';
 import { StorageService } from '../../services/storage';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface InvoiceEditorProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
   onSave,
   onQuickAddParty,
 }) => {
+  const { t } = useLanguage();
   if (!isOpen) return null;
 
   const isSale = type === 'sale_invoice';
@@ -347,12 +349,16 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900">
-                {isSale ? 'Create Sales Invoice' : isEstimate ? 'Create Quotation / Estimate' : 'Record Purchase Bill'}
+                {isSale
+                  ? t('Create Sales Invoice', 'নতুন বিক্রয় ইনভয়েস তৈরি')
+                  : isEstimate
+                  ? t('Create Quotation / Estimate', 'কোটেশন বা এস্টিমেট তৈরি')
+                  : t('Record Purchase Bill', 'ক্রয় বিল লিপিবদ্ধকরণ')}
               </h2>
               <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
                 <span>Inv #{invoiceNo}</span>
                 <span>·</span>
-                <span>{isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}</span>
+                <span>{isInterState ? t('Inter-State (IGST)', 'আন্তঃরাজ্য (IGST)') : t('Intra-State (CGST + SGST)', 'নিজ রাজ্য (CGST + SGST)')}</span>
               </div>
             </div>
           </div>
@@ -363,7 +369,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
               className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs transition-colors"
             >
               <Printer className="h-4 w-4" />
-              <span>Save & Print</span>
+              <span>{t('Save & Print', 'সংরক্ষণ ও প্রিন্ট')}</span>
             </button>
 
             <button
@@ -371,7 +377,7 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
               className="inline-flex items-center gap-1.5 h-9 px-4 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors"
             >
               <Check className="h-4 w-4" />
-              <span>Save Invoice</span>
+              <span>{t('Save Invoice', 'ইনভয়েস সংরক্ষণ')}</span>
             </button>
 
             <button
@@ -391,14 +397,14 @@ export const InvoiceEditor: React.FC<InvoiceEditorProps> = ({
             <div className="md:col-span-1">
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700">
-                  {isPurchase ? 'Supplier / Vendor' : 'Customer / Party'} *
+                  {isPurchase ? t('Supplier / Vendor', 'সরবরাহকারী / বিক্রেতা') : t('Customer / Party', 'গ্রাহক / মক্কেল')} *
                 </label>
                 <button
                   type="button"
                   onClick={() => setShowAddPartyModal(true)}
                   className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
                 >
-                  + Add New Party
+                  {t('+ Add New Party', '+ নতুন পার্টি')}
                 </button>
               </div>
               <select

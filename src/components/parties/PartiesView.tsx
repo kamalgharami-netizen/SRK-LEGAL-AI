@@ -17,6 +17,7 @@ import {
   Scale,
 } from 'lucide-react';
 import { Party, Transaction, CompanyProfile, PartyType, LegalCase } from '../../types/erp';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface PartiesViewProps {
   parties: Party[];
@@ -41,6 +42,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
   onOpenCaseTracker,
   globalSearch,
 }) => {
+  const { t } = useLanguage();
   const [filterType, setFilterType] = useState<'all' | 'customer' | 'supplier'>('all');
   const [selectedPartyId, setSelectedPartyId] = useState<string>(parties[0]?.id || '');
   const [partyViewTab, setPartyViewTab] = useState<'ledger' | 'cases'>('ledger');
@@ -78,7 +80,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
 
   // Transactions for selected party to build ledger statement
   const partyTransactions = transactions.filter(
-    (t) => t.partyId === selectedParty?.id || (selectedParty && t.partyName === selectedParty.name)
+    (tx) => tx.partyId === selectedParty?.id || (selectedParty && tx.partyName === selectedParty.name)
   );
 
   // Build running balance ledger
@@ -173,8 +175,14 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
     const isReceivable = selectedParty.currentBalance > 0;
 
     const message = isReceivable
-      ? `Dear ${selectedParty.name},\n\nGreetings from ${company.name}!\n\nThis is a gentle reminder that a pending balance of ${company.currencySymbol}${balance.toLocaleString()} is outstanding on your account.\n\nPlease arrange for settlement at your convenience via UPI: ${company.upiId} or Bank Transfer.\n\nThank you for your valued partnership!`
-      : `Dear ${selectedParty.name},\n\nGreetings from ${company.name}!\n\nWe have recorded our ledger balance with you. For any queries regarding statements, please reply back.\n\nThank you!`;
+      ? t(
+          `Dear ${selectedParty.name},\n\nGreetings from ${company.name}!\n\nThis is a gentle reminder that a pending balance of ${company.currencySymbol}${balance.toLocaleString()} is outstanding on your account.\n\nPlease arrange for settlement at your convenience via UPI: ${company.upiId} or Bank Transfer.\n\nThank you for your valued partnership!`,
+          `শ্রদ্ধেয় ${selectedParty.name},\n\n${company.name}-এর পক্ষ থেকে শুভেচ্ছা।\n\nআপনার একাউন্টে মোট বকেয়া টাকা: ${company.currencySymbol}${balance.toLocaleString()}।\n\nঅনুগ্রহ করে সুবিধাজনক সময়ে পরিশোধের অনুরোধ জানাচ্ছি। ইউপিআই: ${company.upiId}\n\nধন্যবাদ!`
+        )
+      : t(
+          `Dear ${selectedParty.name},\n\nGreetings from ${company.name}!\n\nWe have recorded our ledger balance with you. For any queries regarding statements, please reply back.\n\nThank you!`,
+          `প্রিয় ${selectedParty.name},\n\n${company.name}-এর পক্ষ থেকে শুভেচ্ছা। আপনার খতিয়ান হিসাব আপডেট করা হয়েছে। কোনো সংশোধনের প্রয়োজন হলে যোগাযোগ করুন। ধন্যবাদ!`
+        );
 
     const cleanPhone = (selectedParty.phone || '').replace(/\D/g, '');
     const url = cleanPhone
@@ -185,7 +193,14 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
 
   const handleExportLedgerCSV = () => {
     if (!selectedParty) return;
-    const headers = ['Date', 'Type', 'Reference No', 'Debit', 'Credit', 'Running Balance'];
+    const headers = [
+      t('Date', 'তারিখ'),
+      t('Type', 'প্রকার'),
+      t('Reference No', 'রেফারেন্স নং'),
+      t('Debit', 'ডেবিট'),
+      t('Credit', 'ক্রেডিট'),
+      t('Running Balance', 'চলতি ব্যালেন্স'),
+    ];
     const rows = ledgerEntries.map((row) => [
       `"${row.tx.date}"`,
       `"${row.tx.type}"`,
@@ -210,10 +225,13 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Parties & Customer CRM
+            {t('Parties & Customer CRM', 'পক্ষ ও মক্কেল খতিয়ান')}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Customer directory, vendor records, ledger statements & payment reminders
+            {t(
+              'Customer directory, vendor records, ledger statements & payment reminders',
+              'গ্রাহক ও সাপ্লায়ার তালিকা, আর্থিক খতিয়ান, বাকি হিসাব ও পেমেন্ট রিমাইন্ডার'
+            )}
           </p>
         </div>
 
@@ -222,13 +240,13 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
           className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors self-start sm:self-auto"
         >
           <Plus className="h-4 w-4" />
-          <span>+ Add New Party</span>
+          <span>{t('+ Add New Party', '+ নতুন পার্টি যোগ')}</span>
         </button>
       </div>
 
       {/* Main 2-Column Split: Party Directory (Left) + Party Ledger Statement (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Party Directory (4 cols) */}
+        {/* Left Column: Party Directory (5 cols) */}
         <div className="lg:col-span-5 rounded-xl bg-white border border-slate-200 shadow-xs overflow-hidden flex flex-col">
           <div className="p-3 border-b border-slate-200 space-y-2">
             {/* Filter Tabs */}
@@ -236,26 +254,26 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
               <button
                 onClick={() => setFilterType('all')}
                 className={`flex-1 py-1.5 rounded-md transition-colors ${
-                  filterType === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                  filterType === 'all' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600'
                 }`}
               >
-                All ({parties.length})
+                {t('All', 'সকল')} ({parties.length})
               </button>
               <button
                 onClick={() => setFilterType('customer')}
                 className={`flex-1 py-1.5 rounded-md transition-colors ${
-                  filterType === 'customer' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                  filterType === 'customer' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600'
                 }`}
               >
-                Customers
+                {t('Customers', 'গ্রাহক / মক্কেল')}
               </button>
               <button
                 onClick={() => setFilterType('supplier')}
                 className={`flex-1 py-1.5 rounded-md transition-colors ${
-                  filterType === 'supplier' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
+                  filterType === 'supplier' ? 'bg-white text-slate-900 shadow-xs font-semibold' : 'text-slate-600'
                 }`}
               >
-                Suppliers
+                {t('Suppliers', 'সাপ্লায়ার / বিক্রেতা')}
               </button>
             </div>
 
@@ -264,7 +282,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search parties..."
+                placeholder={t('Search party by name, phone or city...', 'নাম, মোবাইল বা শহর দিয়ে খুঁজুন...')}
                 value={localSearch}
                 onChange={(e) => setLocalSearch(e.target.value)}
                 className="w-full h-8 pl-8 pr-3 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none"
@@ -303,16 +321,24 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                       >
                         {company.currencySymbol}{Math.abs(p.currentBalance).toLocaleString()}
                       </div>
-                      <span className="text-[10px] text-slate-400 uppercase">
-                        {isReceivable ? 'Receivable' : isPayable ? 'Payable' : 'Settled'}
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                        {isReceivable
+                          ? t('Receivable', 'পাবেন')
+                          : isPayable
+                          ? t('Payable', 'দেবেন')
+                          : t('Settled', 'পরিশোধিত')}
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-                    <span>{p.phone || p.city || 'No contact'}</span>
-                    <span className="capitalize text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                      {p.type}
+                    <span>{p.phone || p.city || t('No contact', 'কোনো নম্বর নেই')}</span>
+                    <span className="capitalize text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-sans">
+                      {p.type === 'customer'
+                        ? t('Customer', 'গ্রাহক')
+                        : p.type === 'supplier'
+                        ? t('Supplier', 'সাপ্লায়ার')
+                        : t('Customer & Supplier', 'গ্রাহক ও সাপ্লায়ার')}
                     </span>
                   </div>
                 </div>
@@ -331,7 +357,11 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                   <div className="flex items-center gap-2">
                     <h2 className="text-base font-bold text-slate-900">{selectedParty.name}</h2>
                     <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-slate-200 text-slate-700">
-                      {selectedParty.type}
+                      {selectedParty.type === 'customer'
+                        ? t('Customer', 'গ্রাহক')
+                        : selectedParty.type === 'supplier'
+                        ? t('Supplier', 'সাপ্লায়ার')
+                        : t('Both', 'উভয়')}
                     </span>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-500 font-mono">
@@ -350,7 +380,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={handleWhatsAppReminder}
-                    title="Send WhatsApp Payment Reminder"
+                    title={t('Send WhatsApp Payment Reminder', 'হোয়াটসঅ্যাপ পেমেন্ট রিমাইন্ডার পাঠান')}
                     className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg"
                   >
                     <Share2 className="h-3.5 w-3.5" />
@@ -363,7 +393,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                       className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs"
                     >
                       <ArrowDownLeft className="h-3.5 w-3.5" />
-                      <span>Receive Money</span>
+                      <span>{t('Receive Money', 'টাকা গ্রহণ')}</span>
                     </button>
                   ) : (
                     <button
@@ -371,15 +401,15 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                       className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-xs"
                     >
                       <ArrowUpRight className="h-3.5 w-3.5" />
-                      <span>Pay Vendor</span>
+                      <span>{t('Pay Vendor', 'টাকা প্রদান')}</span>
                     </button>
                   )}
 
                   <button
                     onClick={() => openEditPartyModal(selectedParty)}
-                    className="h-8 px-2.5 text-xs text-slate-600 hover:bg-slate-200/70 border border-slate-300 rounded-lg"
+                    className="h-8 px-2.5 text-xs text-slate-600 hover:bg-slate-200/70 border border-slate-300 rounded-lg font-medium"
                   >
-                    Edit
+                    {t('Edit', 'সম্পাদনা')}
                   </button>
                 </div>
               </div>
@@ -387,20 +417,20 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
               {/* Balance Summary Bar */}
               <div className="grid grid-cols-3 divide-x divide-slate-200 border-b border-slate-200 text-center p-3 text-xs">
                 <div>
-                  <span className="text-slate-400 text-[11px] block">Opening Balance</span>
+                  <span className="text-slate-400 text-[11px] block">{t('Opening Balance', 'প্রারম্ভিক ব্যালেন্স')}</span>
                   <span className="font-mono font-bold text-slate-800 tabular-nums">
                     {company.currencySymbol}{Math.abs(selectedParty.openingBalance).toLocaleString()}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-[11px] block">Total Invoiced</span>
+                  <span className="text-slate-400 text-[11px] block">{t('Total Invoiced', 'মোট ইনভয়েস')}</span>
                   <span className="font-mono font-bold text-indigo-700 tabular-nums">
                     {company.currencySymbol}
                     {ledgerEntries.reduce((a, b) => a + b.debit, 0).toLocaleString()}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 text-[11px] block">Current Balance</span>
+                  <span className="text-slate-400 text-[11px] block">{t('Current Balance', 'বর্তমান ব্যালেন্স')}</span>
                   <span
                     className={`font-mono font-bold text-sm tabular-nums ${
                       selectedParty.currentBalance > 0
@@ -422,24 +452,24 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                     onClick={() => setPartyViewTab('ledger')}
                     className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors ${
                       partyViewTab === 'ledger'
-                        ? 'border-indigo-600 text-indigo-700'
+                        ? 'border-indigo-600 text-indigo-700 font-bold'
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     <FileText className="h-3.5 w-3.5" />
-                    <span>Financial Ledger Statement</span>
+                    <span>{t('Financial Ledger Statement', 'আর্থিক খতিয়ান বিবরণী')}</span>
                   </button>
 
                   <button
                     onClick={() => setPartyViewTab('cases')}
                     className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors ${
                       partyViewTab === 'cases'
-                        ? 'border-purple-600 text-purple-700'
+                        ? 'border-purple-600 text-purple-700 font-bold'
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     <Scale className="h-3.5 w-3.5" />
-                    <span>Linked Case Files ({partyCases.length})</span>
+                    <span>{t('Linked Case Files', 'যুক্ত আইনি কেস')} ({partyCases.length})</span>
                   </button>
                 </div>
 
@@ -449,7 +479,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                     className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-indigo-600 py-1"
                   >
                     <Download className="h-3 w-3" />
-                    <span>Export Statement CSV</span>
+                    <span>{t('Export CSV', 'সিএসভি ডাউনলোড')}</span>
                   </button>
                 ) : (
                   onOpenCaseTracker && (
@@ -457,7 +487,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                       onClick={() => onOpenCaseTracker(selectedParty.id)}
                       className="text-xs font-semibold text-purple-700 hover:underline py-1"
                     >
-                      Open Case Tracker →
+                      {t('Open in Case Tracker →', 'কেস ট্র্যাকার খুলুন →')}
                     </button>
                   )
                 )}
@@ -467,18 +497,18 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                 /* Ledger Statement Table */
                 ledgerEntries.length === 0 ? (
                   <div className="p-8 text-center text-xs text-slate-500">
-                    No invoices or transactions recorded yet for this party.
+                    {t('No invoices or transactions recorded yet for this party.', 'এই পার্টির কোনো লেনদেন বা ইনভয়েস পাওয়া যায়নি।')}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                          <th className="py-2.5 px-3">Date</th>
-                          <th className="py-2.5 px-3">Transaction</th>
-                          <th className="py-2.5 px-3 text-right">Debit (+)</th>
-                          <th className="py-2.5 px-3 text-right">Credit (-)</th>
-                          <th className="py-2.5 px-4 text-right">Balance</th>
+                          <th className="py-2.5 px-3">{t('Date', 'তারিখ')}</th>
+                          <th className="py-2.5 px-3">{t('Transaction', 'লেনদেন বিবরণ')}</th>
+                          <th className="py-2.5 px-3 text-right">{t('Debit (+)', 'ডেবিট (+)')}</th>
+                          <th className="py-2.5 px-3 text-right">{t('Credit (-)', 'ক্রেডিট (-)')}</th>
+                          <th className="py-2.5 px-4 text-right">{t('Balance', 'ব্যালেন্স')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -490,12 +520,12 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                             <td className="py-2.5 px-3">
                               <span className="font-semibold text-slate-800">
                                 {row.tx.type === 'sale_invoice'
-                                  ? 'Sale Invoice'
+                                  ? t('Sale Invoice', 'বিক্রয় ইনভয়েস')
                                   : row.tx.type === 'payment_in'
-                                  ? 'Payment Received'
+                                  ? t('Payment Received', 'টাকা গ্রহণ')
                                   : row.tx.type === 'purchase_bill'
-                                  ? 'Purchase Bill'
-                                  : 'Payment Made'}
+                                  ? t('Purchase Bill', 'ক্রয় বিল')
+                                  : t('Payment Made', 'টাকা প্রদান')}
                               </span>
                               <span className="text-[10px] text-slate-400 font-mono block">
                                 #{row.tx.invoiceNo}
@@ -521,20 +551,20 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                 partyCases.length === 0 ? (
                   <div className="p-8 text-center text-xs text-slate-500">
                     <Scale className="h-6 w-6 text-slate-300 mx-auto mb-1.5" />
-                    <span>No legal or land revenue case records associated with this client.</span>
+                    <span>{t('No legal or land revenue case records associated with this client.', 'এই মক্কেলের কোনো আইনি কেস রেকর্ড যুক্ত নেই।')}</span>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                          <th className="py-2.5 px-3">Case # & Ref</th>
-                          <th className="py-2.5 px-3">Category</th>
-                          <th className="py-2.5 px-3">Broker / Agent</th>
-                          <th className="py-2.5 px-3">Court & Officers</th>
-                          <th className="py-2.5 px-3">Land / Deed</th>
-                          <th className="py-2.5 px-3">Next Hearing</th>
-                          <th className="py-2.5 px-3 text-center">Status</th>
+                          <th className="py-2.5 px-3">{t('Case # & Ref', 'কেস নং ও সূত্র')}</th>
+                          <th className="py-2.5 px-3">{t('Category', 'শ্রেণী')}</th>
+                          <th className="py-2.5 px-3">{t('Broker / Agent', 'দালাল / এজেন্ট')}</th>
+                          <th className="py-2.5 px-3">{t('Court & Officers', 'আদালত ও কর্মকর্তা')}</th>
+                          <th className="py-2.5 px-3">{t('Land / Deed', 'জমি / দলিল')}</th>
+                          <th className="py-2.5 px-3">{t('Next Hearing', 'পরবর্তী শুনানি')}</th>
+                          <th className="py-2.5 px-3 text-center">{t('Status', 'অবস্থা')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -552,7 +582,13 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                                 {ref && <span className="font-mono text-[10px] text-purple-700 block">{ref}</span>}
                               </td>
                               <td className="py-2.5 px-3 uppercase text-[10px] font-semibold text-slate-700">
-                                {c.type.replace('_', ' ')}
+                                {c.type === 'mutation'
+                                  ? t('Mutation', 'মিউটেশন')
+                                  : c.type === 'misc_case'
+                                  ? t('Misc Case', 'মিস কেস')
+                                  : c.type === 'rti'
+                                  ? t('RTI', 'আরটিআই')
+                                  : t('LR Appeal', 'এলআর আপিল')}
                               </td>
                               <td className="py-2.5 px-3 text-slate-700 text-[11px]">
                                 {c.brokerName ? (
@@ -580,7 +616,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                                 )}
                               </td>
                               <td className="py-2.5 px-3 font-mono font-bold text-slate-900">
-                                {c.nextHearingDate || 'Not set'}
+                                {c.nextHearingDate || t('Not set', 'নির্ধারিত হয়নি')}
                               </td>
                               <td className="py-2.5 px-3 text-center">
                                 <span className="uppercase text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700">
@@ -599,8 +635,8 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
           ) : (
             <div className="p-12 text-center bg-white rounded-xl border border-slate-200">
               <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-              <div className="text-sm font-semibold text-slate-700">No party selected</div>
-              <p className="text-xs text-slate-500 mt-1">Select a customer or supplier on the left to view ledger.</p>
+              <div className="text-sm font-semibold text-slate-700">{t('No party selected', 'কোনো পক্ষ নির্বাচিত হয়নি')}</div>
+              <p className="text-xs text-slate-500 mt-1">{t('Select a customer or supplier on the left to view ledger.', 'খতিয়ান দেখতে বাঁপাশের তালিকা থেকে যেকোনো পার্টি নির্বাচন করুন।')}</p>
             </div>
           )}
         </div>
@@ -612,7 +648,9 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
           <div className="w-full max-w-lg bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
               <h3 className="text-sm font-bold text-slate-900">
-                {editingParty ? 'Edit Party Details' : 'Add New Party / CRM Contact'}
+                {editingParty
+                  ? t('Edit Party Details', 'পার্টির তথ্য সংশোধন')
+                  : t('Add New Party / CRM Contact', 'নতুন পার্টি / মক্কেল যোগ')}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -626,36 +664,36 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Party / Business Name *
+                    {t('Party / Business Name *', 'পার্টি বা প্রতিষ্ঠানের নাম *')}
                   </label>
                   <input
                     type="text"
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    placeholder="e.g. Acme Tech Solutions"
+                    placeholder={t('e.g. Acme Tech Solutions', 'যেমন: রহিম এন্টারপ্রাইজ')}
                     className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Party Type
+                    {t('Party Type', 'পার্টির ধরণ')}
                   </label>
                   <select
                     value={formType}
                     onChange={(e) => setFormType(e.target.value as PartyType)}
                     className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                   >
-                    <option value="customer">Customer (Buyer)</option>
-                    <option value="supplier">Supplier (Vendor)</option>
-                    <option value="both">Both (Customer & Vendor)</option>
+                    <option value="customer">{t('Customer (Buyer)', 'গ্রাহক / ক্রেতা')}</option>
+                    <option value="supplier">{t('Supplier (Vendor)', 'সাপ্লায়ার / বিক্রেতা')}</option>
+                    <option value="both">{t('Both (Customer & Vendor)', 'উভয় (ক্রেতা ও বিক্রেতা)')}</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Phone Number
+                    {t('Phone Number', 'মোবাইল নম্বর')}
                   </label>
                   <input
                     type="text"
@@ -668,7 +706,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Email Address
+                    {t('Email Address', 'ইমেইল অ্যাড্রেস')}
                   </label>
                   <input
                     type="email"
@@ -681,7 +719,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    GSTIN (Tax ID)
+                    {t('GSTIN (Tax ID)', 'জিএসটি নং (GSTIN)')}
                   </label>
                   <input
                     type="text"
@@ -694,7 +732,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
 
                 <div className="col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Billing Address
+                    {t('Billing Address', 'বিলিং ঠিকানা')}
                   </label>
                   <input
                     type="text"
@@ -707,26 +745,26 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    City
+                    {t('City', 'শহর')}
                   </label>
                   <input
                     type="text"
                     value={formCity}
                     onChange={(e) => setFormCity(e.target.value)}
-                    placeholder="e.g. Mumbai"
+                    placeholder="City"
                     className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    State
+                    {t('State', 'রাজ্য')}
                   </label>
                   <input
                     type="text"
                     value={formState}
                     onChange={(e) => setFormState(e.target.value)}
-                    placeholder="e.g. Maharashtra"
+                    placeholder="State"
                     className="w-full h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                   />
                 </div>
@@ -734,7 +772,7 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                 {!editingParty && (
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Opening Balance ({company.currencySymbol})
+                      {t('Opening Balance', 'প্রারম্ভিক ব্যালেন্স')} ({company.currencySymbol})
                     </label>
                     <input
                       type="number"
@@ -753,14 +791,15 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      if (window.confirm(`Delete ${editingParty.name}?`)) {
+                      const confirmDel = t(`Delete ${editingParty.name}?`, `আপনি কি ${editingParty.name}-কে মুছে ফেলতে চান?`);
+                      if (window.confirm(confirmDel)) {
                         onDeleteParty(editingParty.id);
                         setIsModalOpen(false);
                       }
                     }}
                     className="text-xs text-rose-600 hover:text-rose-800 font-semibold"
                   >
-                    Delete Party
+                    {t('Delete Party', 'পার্টি মুছুন')}
                   </button>
                 ) : (
                   <div></div>
@@ -772,13 +811,13 @@ export const PartiesView: React.FC<PartiesViewProps> = ({
                     onClick={() => setIsModalOpen(false)}
                     className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
                   >
-                    Cancel
+                    {t('Cancel', 'বাতিল')}
                   </button>
                   <button
                     type="submit"
                     className="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs"
                   >
-                    Save Party
+                    {t('Save Party', 'সংরক্ষণ')}
                   </button>
                 </div>
               </div>

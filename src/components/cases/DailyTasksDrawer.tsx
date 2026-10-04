@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { DailyTask, LegalCase, CompanyProfile } from '../../types/erp';
 import { NotificationService } from '../../services/notificationService';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface DailyTasksDrawerProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
   onDeleteTask,
   onSelectCase,
 }) => {
+  const { t } = useLanguage();
   const [newTitle, setNewTitle] = useState('');
   const [newDueDate, setNewDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [newPriority, setNewPriority] = useState<'high' | 'medium' | 'low'>('high');
@@ -87,7 +89,10 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
   };
 
   const handleShareWhatsAppHearing = (c: LegalCase) => {
-    const text = `Dear ${c.partyName},\n\nNotice of Hearing from ${company.name}:\nCase No: ${c.caseNo} (${c.type.toUpperCase()})\nCourt / Authority: ${c.courtOrAuthority}\nHearing is scheduled for TODAY: ${c.nextHearingDate}.\n\nPlease ensure your presence or required papers.\n\nThank you!`;
+    const text = t(
+      `Dear ${c.partyName},\n\nNotice of Hearing from ${company.name}:\nCase No: ${c.caseNo} (${c.type.toUpperCase()})\nCourt / Authority: ${c.courtOrAuthority}\nHearing is scheduled for TODAY: ${c.nextHearingDate}.\n\nPlease ensure your presence or required papers.\n\nThank you!`,
+      `শ্রদ্ধেয় ${c.partyName},\n\n${company.name}-এর জরুরি শুনানি নোটিশ:\nকেস নং: ${c.caseNo} (${c.type.toUpperCase()})\nকর্তৃপক্ষ / আদালত: ${c.courtOrAuthority}\nশুনানির নির্ধারিত তারিখ: আজ (${c.nextHearingDate})।\n\nউপস্থিত থাকার জন্য বিনীত অনুরোধ করা হচ্ছে।\n\nধন্যবাদ!`
+    );
     const cleanPhone = (c.partyPhone || '').replace(/\D/g, '');
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
@@ -101,7 +106,10 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
     NotificationService.playAlertChime();
     if (granted) {
       NotificationService.sendDesktopNotification('SRK ERP Software', {
-        body: `Daily Notifications enabled. You have ${todayHearings.length} hearing(s) and ${pendingTasks.length} task(s) today.`,
+        body: t(
+          `Daily Notifications enabled. You have ${todayHearings.length} hearing(s) and ${pendingTasks.length} task(s) today.`,
+          `দৈনিক নোটিফিকেশন চালু হয়েছে। আজ আপনার ${todayHearings.length} টি শুনানি এবং ${pendingTasks.length} টি কাজ রয়েছে।`
+        ),
       });
     }
   };
@@ -116,14 +124,14 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
               <Bell className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Daily Notifications & Tasks</h3>
-              <p className="text-[11px] text-slate-500 font-mono">Today: {todayStr}</p>
+              <h3 className="text-sm font-bold text-slate-900">{t('Daily Notifications & Tasks', 'দৈনিক কাজ ও শুনানির তাগিদ')}</h3>
+              <p className="text-[11px] text-slate-500 font-mono">{t('Today:', 'আজ:')} {todayStr}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => NotificationService.playAlertChime()}
-              title="Play Daily Alert Chime"
+              title={t('Play Daily Alert Chime', 'সতর্কতা শব্দ বাজান')}
               className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg hover:bg-slate-200/60"
             >
               <Volume2 className="h-4 w-4" />
@@ -145,14 +153,17 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
               <div className="flex items-center gap-2">
                 <Bell className="h-4 w-4 text-indigo-600 shrink-0" />
                 <span className="text-[11px] font-medium leading-tight">
-                  Receive browser notifications for daily hearings & tasks
+                  {t(
+                    'Receive browser notifications for daily hearings & tasks',
+                    'দৈনিক শুনানি ও কাজের জন্য ব্রাউজার নোটিফিকেশন চালু করুন'
+                  )}
                 </span>
               </div>
               <button
                 onClick={handleRequestBrowserAlerts}
                 className="px-2.5 py-1 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors whitespace-nowrap"
               >
-                Enable
+                {t('Enable', 'চালু করুন')}
               </button>
             </div>
           )}
@@ -163,10 +174,10 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
               <div className="flex items-center justify-between text-amber-950 font-bold uppercase tracking-wider text-[11px]">
                 <div className="flex items-center gap-1.5">
                   <Scale className="h-4 w-4 text-amber-700" />
-                  <span>Hearings Scheduled Today ({todayHearings.length})</span>
+                  <span>{t('Hearings Scheduled Today', 'আজকের নির্ধারিত শুনানি')} ({todayHearings.length})</span>
                 </div>
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-bold">
-                  Action Due
+                  {t('Action Due', 'জরুরি')}
                 </span>
               </div>
 
@@ -186,13 +197,19 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
                         {c.caseNo}
                       </button>
                       <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
-                        {c.type.replace('_', ' ')}
+                        {c.type === 'mutation'
+                          ? t('Mutation', 'মিউটেশন')
+                          : c.type === 'misc_case'
+                          ? t('Misc Case', 'মিস কেস')
+                          : c.type === 'rti'
+                          ? t('RTI', 'আরটিআই')
+                          : t('LR Appeal', 'এলআর আপিল')}
                       </span>
                     </div>
 
                     <div className="font-semibold text-slate-900 truncate">{c.title}</div>
                     <div className="text-[11px] text-slate-600">
-                      Client: <span className="font-bold text-slate-800">{c.partyName}</span>
+                      {t('Client:', 'মক্কেল:')} <span className="font-bold text-slate-800">{c.partyName}</span>
                     </div>
 
                     <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
@@ -201,7 +218,7 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
                       </span>
                       <button
                         onClick={() => handleShareWhatsAppHearing(c)}
-                        title="Send WhatsApp notice to client"
+                        title={t('Send WhatsApp notice to client', 'মক্কেলকে হোয়াটসঅ্যাপ পাঠান')}
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:underline"
                       >
                         <Share2 className="h-3 w-3" />
@@ -217,7 +234,7 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
           {/* Section 2: Quick Add Daily Task */}
           <form onSubmit={handleAddTask} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
             <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-              + Add Daily Task / Reminder
+              {t('+ Add Daily Task / Reminder', '+ নতুন কাজ বা তাগিদ যোগ করুন')}
             </h4>
 
             <div>
@@ -226,14 +243,14 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
                 required
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="e.g. Submit mutation certified copy, meet RI..."
+                placeholder={t('e.g. Submit mutation certified copy, meet RI...', 'যেমন: পর্চার নকল তোলা, আরও মিটিং...')}
                 className="w-full h-8 px-2.5 text-xs bg-white border border-slate-300 rounded-lg outline-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-slate-500 block mb-0.5">Due Date</label>
+                <label className="text-[10px] text-slate-500 block mb-0.5">{t('Due Date', 'শেষ তারিখ')}</label>
                 <input
                   type="date"
                   value={newDueDate}
@@ -243,28 +260,28 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
               </div>
 
               <div>
-                <label className="text-[10px] text-slate-500 block mb-0.5">Priority</label>
+                <label className="text-[10px] text-slate-500 block mb-0.5">{t('Priority', 'গুরুত্ব')}</label>
                 <select
                   value={newPriority}
                   onChange={(e) => setNewPriority(e.target.value as any)}
                   className="w-full h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg outline-none font-semibold"
                 >
-                  <option value="high">High Priority</option>
-                  <option value="medium">Medium Priority</option>
-                  <option value="low">Low Priority</option>
+                  <option value="high">{t('High Priority', 'জরুরি / উচ্চ')}</option>
+                  <option value="medium">{t('Medium Priority', 'সাধারণ / মাধ্যম')}</option>
+                  <option value="low">{t('Low Priority', 'কম জরুরি')}</option>
                 </select>
               </div>
             </div>
 
             {cases.length > 0 && (
               <div>
-                <label className="text-[10px] text-slate-500 block mb-0.5">Link Case (Optional)</label>
+                <label className="text-[10px] text-slate-500 block mb-0.5">{t('Link Case (Optional)', 'কেসের সাথে যুক্ত করুন')}</label>
                 <select
                   value={newCaseId}
                   onChange={(e) => setNewCaseId(e.target.value)}
                   className="w-full h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg outline-none"
                 >
-                  <option value="">No linked case</option>
+                  <option value="">{t('No linked case', 'কোনো কেসের সাথে যুক্ত নয়')}</option>
                   {cases.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.caseNo} ({c.type.toUpperCase()}) — {c.partyName}
@@ -279,7 +296,7 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
               className="w-full h-8 font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>Add Task</span>
+              <span>{t('Add Task', 'কাজ যোগ করুন')}</span>
             </button>
           </form>
 
@@ -287,7 +304,7 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <h4 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-                Pending Tasks ({pendingTasks.length})
+                {t('Pending Tasks', 'বাকি কাজসমূহ')} ({pendingTasks.length})
               </h4>
               {pendingTasks.length > 0 && (
                 <button
@@ -297,33 +314,33 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
                   className="text-[10px] text-indigo-600 hover:underline font-semibold flex items-center gap-1"
                 >
                   <CheckCheck className="h-3 w-3" />
-                  <span>Mark All Done</span>
+                  <span>{t('Mark All Done', 'সব সম্পন্ন করুন')}</span>
                 </button>
               )}
             </div>
 
             {pendingTasks.length === 0 ? (
-              <p className="text-slate-400 text-center py-4 italic">No pending tasks for today!</p>
+              <p className="text-slate-400 text-center py-4 italic">{t('No pending tasks for today!', 'আজকের কোনো কাজ বাকি নেই!')}</p>
             ) : (
               <div className="space-y-1.5">
-                {pendingTasks.map((t) => {
-                  const isToday = t.dueDate === todayStr;
-                  const isPast = t.dueDate < todayStr;
+                {pendingTasks.map((task) => {
+                  const isToday = task.dueDate === todayStr;
+                  const isPast = task.dueDate < todayStr;
 
                   return (
                     <div
-                      key={t.id}
+                      key={task.id}
                       className="p-2.5 rounded-lg bg-white border border-slate-200 hover:border-slate-300 transition-colors flex items-start gap-2.5 group"
                     >
                       <button
-                        onClick={() => onToggleTask(t.id)}
+                        onClick={() => onToggleTask(task.id)}
                         className="mt-0.5 text-slate-400 hover:text-indigo-600 shrink-0"
                       >
                         <Circle className="h-4 w-4" />
                       </button>
 
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-slate-900 leading-snug">{t.title}</div>
+                        <div className="font-medium text-slate-900 leading-snug">{task.title}</div>
                         <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-500 font-mono">
                           <span
                             className={`font-semibold ${
@@ -334,27 +351,31 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
                                 : 'text-slate-600'
                             }`}
                           >
-                            Due: {t.dueDate} {isToday ? '(Today)' : ''}
+                            {t('Due:', 'তারিখ:')} {task.dueDate} {isToday ? t('(Today)', '(আজ)') : ''}
                           </span>
 
                           <span
-                            className={`uppercase font-semibold px-1 rounded ${
-                              t.priority === 'high'
+                            className={`uppercase font-semibold px-1 rounded font-sans ${
+                              task.priority === 'high'
                                 ? 'bg-rose-50 text-rose-700'
-                                : t.priority === 'medium'
+                                : task.priority === 'medium'
                                 ? 'bg-amber-50 text-amber-700'
                                 : 'bg-slate-100 text-slate-600'
                             }`}
                           >
-                            {t.priority}
+                            {task.priority === 'high'
+                              ? t('High', 'জরুরি')
+                              : task.priority === 'medium'
+                              ? t('Medium', 'সাধারণ')
+                              : t('Low', 'কম')}
                           </span>
 
-                          {t.caseNo && <span className="text-indigo-600 font-bold">{t.caseNo}</span>}
+                          {task.caseNo && <span className="text-indigo-600 font-bold">{task.caseNo}</span>}
                         </div>
                       </div>
 
                       <button
-                        onClick={() => onDeleteTask(t.id)}
+                        onClick={() => onDeleteTask(task.id)}
                         className="text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -371,7 +392,7 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
               <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[11px] text-slate-700">
                 <Calendar className="h-3.5 w-3.5 text-indigo-600" />
-                <span>Hearings in Next 7 Days ({upcomingHearings.length})</span>
+                <span>{t('Hearings in Next 7 Days', 'আগামী ৭ দিনের শুনানি')} ({upcomingHearings.length})</span>
               </div>
               <div className="space-y-1.5">
                 {upcomingHearings.map((c) => (
@@ -396,7 +417,7 @@ export const DailyTasksDrawer: React.FC<DailyTasksDrawerProps> = ({
           {completedTasks.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-slate-200">
               <h4 className="font-bold text-slate-400 uppercase tracking-wider text-[11px]">
-                Completed Tasks ({completedTasks.length})
+                {t('Completed Tasks', 'সম্পন্ন কাজ')} ({completedTasks.length})
               </h4>
               <div className="space-y-1">
                 {completedTasks.map((t) => (

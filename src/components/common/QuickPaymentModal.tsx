@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Check } from 'lucide-react';
 import { Party, BankAccount, Transaction, PaymentMode } from '../../types/erp';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface QuickPaymentModalProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
   currencySymbol,
   onConfirm,
 }) => {
+  const { t } = useLanguage();
   const [selectedPartyId, setSelectedPartyId] = useState(
     party ? party.id : invoice?.partyId || (parties[0]?.id ?? '')
   );
@@ -67,10 +69,14 @@ export const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
           <div>
             <h3 className="text-base font-semibold text-slate-900">
-              {isCustomer ? 'Record Payment In (Receipt)' : 'Record Payment Out (Voucher)'}
+              {isCustomer
+                ? t('Record Payment In (Receipt)', 'টাকা প্রাপ্তি রসিদ (পেমেন্ট ইন)')
+                : t('Record Payment Out (Voucher)', 'টাকা প্রদান ভাউচার (পেমেন্ট আউট)')}
             </h3>
             <p className="text-xs text-slate-500">
-              {invoice ? `Settling Invoice #${invoice.invoiceNo}` : 'Settle party ledger balance'}
+              {invoice
+                ? `${t('Settling Invoice', 'ইনভয়েস পরিশোধ')} #${invoice.invoiceNo}`
+                : t('Settle party ledger balance', 'পার্টির বকেয়া হিসাব নিষ্পত্তি')}
             </p>
           </div>
           <button
@@ -84,7 +90,7 @@ export const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              {isCustomer ? 'Received From (Customer)' : 'Paid To (Supplier)'}
+              {isCustomer ? t('Received From (Customer)', 'যার কাছ থেকে গ্রহণ (মক্কেল/গ্রাহক)') : t('Paid To (Supplier)', 'যাকে প্রদান (সরবরাহকারী)')}
             </label>
             <select
               value={selectedPartyId}
@@ -94,7 +100,7 @@ export const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
             >
               {parties.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} ({p.type}) — Balance: {currencySymbol}
+                  {p.name} ({p.type}) — {t('Balance:', 'ব্যালেন্স:')} {currencySymbol}
                   {p.currentBalance.toLocaleString()}
                 </option>
               ))}
@@ -103,7 +109,7 @@ export const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Amount ({currencySymbol})
+              {t('Amount', 'টাকার পরিমাণ')} ({currencySymbol})
             </label>
             <input
               type="number"
@@ -120,23 +126,23 @@ export const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Payment Mode
+                {t('Payment Mode', 'পেমেন্টের মাধ্যম')}
               </label>
               <select
                 value={mode}
                 onChange={(e) => setMode(e.target.value as PaymentMode)}
                 className="w-full h-10 px-3 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
               >
-                <option value="bank">Bank Transfer / NEFT</option>
-                <option value="upi">UPI / QR Code</option>
-                <option value="cash">Cash</option>
-                <option value="cheque">Cheque</option>
+                <option value="bank">{t('Bank Transfer / NEFT', 'ব্যাংক ট্রান্সফার / এনইএফটি')}</option>
+                <option value="upi">{t('UPI / QR Code', 'ইউপিআই / কিউআর কোড')}</option>
+                <option value="cash">{t('Cash', 'নগদ ক্যাশ')}</option>
+                <option value="cheque">{t('Cheque', 'চেক')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Account
+                {t('Account', 'একাউন্ট')}
               </label>
               <select
                 value={accountId}
@@ -154,31 +160,33 @@ export const QuickPaymentModal: React.FC<QuickPaymentModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Notes / Reference (Optional)
+              {t('Notes / Reference Details', 'নোট বা রেফারেন্স বিবরণ')}
             </label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Cheque #, UTR #, or payment note"
+              placeholder={t('e.g. Settlement for invoice or advance', 'যেমন: আংশিক পেমেন্ট বা অগ্রিম পরিশোধ')}
               className="w-full h-10 px-3 text-sm bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
+              className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg font-medium"
             >
-              Cancel
+              {t('Cancel', 'বাতিল')}
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs"
+              className={`px-5 py-2 text-sm font-semibold text-white rounded-lg shadow-xs flex items-center gap-1.5 ${
+                isCustomer ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-rose-600 hover:bg-rose-700'
+              }`}
             >
               <Check className="h-4 w-4" />
-              <span>Save Payment</span>
+              <span>{isCustomer ? t('Confirm Receipt', 'রসিদ নিশ্চিত করুন') : t('Confirm Payment', 'পেমেন্ট নিশ্চিত করুন')}</span>
             </button>
           </div>
         </form>

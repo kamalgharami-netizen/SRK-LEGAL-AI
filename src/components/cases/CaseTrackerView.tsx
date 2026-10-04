@@ -25,10 +25,12 @@ import {
   Phone,
   Briefcase,
   FileCheck,
+  Receipt,
 } from 'lucide-react';
 import { LegalCase, CaseType, CaseStatus, Party, HearingLog, CompanyProfile } from '../../types/erp';
 import { CasePrintModal } from './CasePrintModal';
 import { NotificationService } from '../../services/notificationService';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface CaseTrackerViewProps {
   cases: LegalCase[];
@@ -40,6 +42,7 @@ interface CaseTrackerViewProps {
   onAddHearing: (caseId: string, hearing: HearingLog, nextDate?: string) => void;
   onOpenPartyLedger?: (partyId: string) => void;
   onAddTaskForCase?: (caseId: string, caseNo: string, title: string, dueDate: string) => void;
+  onOpenBillingForCase?: (c: LegalCase) => void;
   globalSearch: string;
 }
 
@@ -53,11 +56,19 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
   onAddHearing,
   onOpenPartyLedger,
   onAddTaskForCase,
+  onOpenBillingForCase,
   globalSearch,
 }) => {
+  const { t } = useLanguage();
   const [activeMenu, setActiveMenu] = useState<'all' | 'mutation' | 'misc_case' | 'rti' | 'lr_appeal' | 'cause_list'>(
     (initialSubTab as any) || 'all'
   );
+
+  React.useEffect(() => {
+    if (initialSubTab) {
+      setActiveMenu(initialSubTab as any);
+    }
+  }, [initialSubTab]);
   const [statusFilter, setStatusFilter] = useState<'all' | CaseStatus>('all');
   const [partyFilter, setPartyFilter] = useState<string>('all');
   const [localSearch, setLocalSearch] = useState('');
@@ -610,14 +621,17 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
           <div className="flex items-center gap-2">
             <Scale className="h-6 w-6 text-indigo-600" />
             <h1 className="text-xl font-bold tracking-tight text-slate-900">
-              Legal & Land Revenue Case Tracker
+              {t('Legal & Land Revenue Case Tracker', 'ভূমি রাজস্ব ও আইনি মামলা ট্র্যাকিং')}
             </h1>
             <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              SRK ERP Software
+              SRK ERP
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Specialized tracking for Mutation, Misc Cases (Docket No/Date), RTI Applications & LR Appeals linked with Parties CRM
+            {t(
+              'Mutation, Misc Cases (Docket No/Date), RTI Applications & LR Appeals linked with CRM Parties',
+              'মিউটেশন (খারিজ), মিস কেস ডকেট, আরটিআই ও এল.আর. আপিল খতিয়ান'
+            )}
           </p>
         </div>
 
@@ -628,7 +642,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
             className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg shadow-xs transition-colors"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Export Excel (.xls)</span>
+            <span>{t('Export Excel (.xls)', 'এক্সেলে ডাউনলোড (.xls)')}</span>
           </button>
 
           {/* Print / PDF Cause List */}
@@ -637,16 +651,16 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
             className="inline-flex items-center gap-1.5 h-9 px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs transition-colors"
           >
             <Printer className="h-3.5 w-3.5 text-slate-500" />
-            <span>Cause List PDF</span>
+            <span>{t('Cause List PDF', 'কজ লিস্ট প্রিন্ট')}</span>
           </button>
 
           {/* + New Case Entry */}
           <button
             onClick={() => openNewCaseModal()}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span>+ New Case Entry (F3)</span>
+            <span>{t('+ New Case Entry (F3)', '+ নতুন মামলা যোগ (F3)')}</span>
           </button>
         </div>
       </div>
@@ -712,13 +726,17 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
           }`}
         >
           <div className="flex justify-between items-center text-xs text-slate-500">
-            <span className="font-semibold uppercase text-[11px] text-purple-900">Mutation</span>
-            <span className="text-[10px] text-purple-700 font-mono font-bold">App & Deed Tracking</span>
+            <span className="font-semibold uppercase text-[11px] text-purple-900 font-mono">
+              {t('Mutation', 'মিউটেশন')}
+            </span>
+            <span className="text-[10px] text-purple-700 font-mono font-bold">Sec 50 RoR</span>
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-purple-950 tabular-nums">
             {totalMutation}
           </div>
-          <span className="text-[11px] text-purple-700/80 block mt-0.5">Broker, R.O. & R.I. records</span>
+          <span className="text-[11px] text-purple-700/80 block mt-0.5">
+            {t('Broker, R.O. & R.I. records', 'দালাল, আর.ও. ও আর.আই.')}
+          </span>
         </div>
 
         {/* Misc Case */}
@@ -731,13 +749,17 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
           }`}
         >
           <div className="flex justify-between items-center text-xs text-slate-500">
-            <span className="font-semibold uppercase text-[11px] text-blue-900">Misc Case</span>
+            <span className="font-semibold uppercase text-[11px] text-blue-900 font-mono">
+              {t('Misc Case', 'মিস কেস')}
+            </span>
             <span className="text-[10px] text-blue-700 font-mono font-bold">Docket System</span>
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-blue-950 tabular-nums">
             {totalMisc}
           </div>
-          <span className="text-[11px] text-blue-700/80 block mt-0.5">Docket No & Date tracking</span>
+          <span className="text-[11px] text-blue-700/80 block mt-0.5">
+            {t('Docket No & Date tracking', 'ডকেট নং ও তারিখ ট্র্যাকিং')}
+          </span>
         </div>
 
         {/* RTI */}
@@ -750,13 +772,17 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
           }`}
         >
           <div className="flex justify-between items-center text-xs text-slate-500">
-            <span className="font-semibold uppercase text-[11px] text-amber-900">RTI Application</span>
-            <span className="text-[10px] text-amber-700 font-mono font-bold">IPO & 30-Day Expiry</span>
+            <span className="font-semibold uppercase text-[11px] text-amber-900 font-mono">
+              {t('RTI Application', 'তথ্য অধিকার')}
+            </span>
+            <span className="text-[10px] text-amber-700 font-mono font-bold">30-Day Timer</span>
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-amber-950 tabular-nums">
             {totalRti}
           </div>
-          <span className="text-[11px] text-amber-700/80 block mt-0.5">Memo & SPIO monitoring</span>
+          <span className="text-[11px] text-amber-700/80 block mt-0.5">
+            {t('Memo & SPIO monitoring', 'মেমো ও তথ্য কর্মকর্তা')}
+          </span>
         </div>
 
         {/* LR Appeal */}
@@ -769,13 +795,17 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
           }`}
         >
           <div className="flex justify-between items-center text-xs text-slate-500">
-            <span className="font-semibold uppercase text-[11px] text-rose-900">LR Appeal</span>
-            <span className="text-[10px] text-rose-700 font-mono font-bold">Sec 54 DL&LRO</span>
+            <span className="font-semibold uppercase text-[11px] text-rose-900 font-mono">
+              {t('LR Appeal', 'এল.আর. আপিল')}
+            </span>
+            <span className="text-[10px] text-rose-700 font-mono font-bold">Tribunal & SDO</span>
           </div>
           <div className="mt-1 text-2xl font-bold font-mono text-rose-950 tabular-nums">
             {totalLrAppeal}
           </div>
-          <span className="text-[11px] text-rose-700/80 block mt-0.5">Stay orders & lower court</span>
+          <span className="text-[11px] text-rose-700/80 block mt-0.5">
+            {t('Stay orders & lower court', 'স্থগিতাদেশ ও আপিল নির্দেশ')}
+          </span>
         </div>
       </div>
 
@@ -791,7 +821,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            All Tracking ({cases.length})
+            {t('All Tracking', 'সমস্ত মামলা')} ({cases.length})
           </button>
 
           <button
@@ -802,7 +832,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            Mutation ({totalMutation})
+            {t('Mutation', 'মিউটেশন')} ({totalMutation})
           </button>
 
           <button
@@ -813,7 +843,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            Misc Case ({totalMisc})
+            {t('Misc Case', 'মিস কেস')} ({totalMisc})
           </button>
 
           <button
@@ -824,7 +854,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            RTI ({totalRti})
+            {t('RTI', 'আরটিআই')} ({totalRti})
           </button>
 
           <button
@@ -835,7 +865,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            LR Appeal ({totalLrAppeal})
+            {t('LR Appeal', 'এল.আর. আপিল')} ({totalLrAppeal})
           </button>
 
           <button
@@ -847,7 +877,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
             }`}
           >
             <Calendar className="h-3 w-3" />
-            <span>Cause List Calendar</span>
+            <span>{t('Daily Cause List', 'দৈনিক কজ লিস্ট')}</span>
           </button>
 
           {/* Quick "+ New Case" Tab */}
@@ -856,7 +886,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
             className="px-3 py-1.5 text-xs font-bold rounded-lg transition-colors whitespace-nowrap bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>+ New Case</span>
+            <span>{t('+ New Case', '+ নতুন মামলা')}</span>
           </button>
         </div>
 
@@ -943,30 +973,30 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                  <th className="py-2.5 px-4">Case # & Ref</th>
-                  <th className="py-2.5 px-3">Party & Broker</th>
+                  <th className="py-2.5 px-4">{t('Case # & Ref', 'কেস ও রেফারেন্স নং')}</th>
+                  <th className="py-2.5 px-3">{t('Party & Broker', 'মক্কেল ও দালাল')}</th>
                   <th className="py-2.5 px-3">
                     {activeMenu === 'mutation'
-                      ? 'R.O. / R.I. Incharge'
+                      ? t('R.O. / R.I. Incharge', 'রেভিনিউ অফিসার ও ইন্সপেক্টর')
                       : activeMenu === 'misc_case'
-                      ? 'Docket Date & Court'
+                      ? t('Docket Date & Court', 'ডকেটের তারিখ ও আদালত')
                       : activeMenu === 'rti'
-                      ? 'SPIO & IPO / Fee'
-                      : 'Court / Authority'}
+                      ? t('SPIO & IPO / Fee', 'তথ্য আধিকারিক ও ফি')
+                      : t('Court / Authority', 'আদালত বা কর্তৃপক্ষ')}
                   </th>
                   <th className="py-2.5 px-3">
                     {activeMenu === 'mutation'
-                      ? 'Deed # & Year / Area'
+                      ? t('Deed # & Year / Area', 'দলিল নং, সন ও পরিমাণ')
                       : activeMenu === 'misc_case'
-                      ? 'Opposite Party / Nature'
+                      ? t('Opposite Party / Nature', 'বিবাদী ও মামলার ধরণ')
                       : activeMenu === 'rti'
-                      ? '30-Day Statutory Expiry'
-                      : 'Land / Impugned Ref'}
+                      ? t('30-Day Expiry', '৩০ দিনের সময়সীমা')
+                      : t('Land / Impugned Ref', 'জমির বিবরণ ও নির্দেশ')}
                   </th>
-                  <th className="py-2.5 px-3">Mouza & Plot / JL</th>
-                  <th className="py-2.5 px-3">Next Hearing / Alert</th>
-                  <th className="py-2.5 px-3 text-center">Status</th>
-                  <th className="py-2.5 px-4 text-right">Actions</th>
+                  <th className="py-2.5 px-3">{t('Mouza & Plot / JL', 'মৌজা, দাগ ও জে.এল.')}</th>
+                  <th className="py-2.5 px-3">{t('Next Hearing / Alert', 'পরবর্তী শুনানি / সতর্কতা')}</th>
+                  <th className="py-2.5 px-3 text-center">{t('Status', 'অবস্থা')}</th>
+                  <th className="py-2.5 px-4 text-right">{t('Actions', 'পদক্ষেপ')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1345,12 +1375,25 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
+                {onOpenBillingForCase && (
+                  <button
+                    onClick={() => {
+                      onOpenBillingForCase(selectedCase);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg shadow-xs"
+                    title={t('Generate Sale Bill / Fee Invoice for this Case in ERP Portion', 'ইআরপি অংশে এই মামলার জন্য সেল বিল বা ফি ইনভয়েস তৈরি করুন')}
+                  >
+                    <Receipt className="h-3.5 w-3.5" />
+                    <span>{t('+ Bill for Case (ERP)', '+ মামলার বিল (ইআরপি)')}</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => handleOpenPrintDossier(selectedCase)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg shadow-xs"
                 >
                   <Printer className="h-3.5 w-3.5 text-slate-500" />
-                  <span>Print Dossier (PDF)</span>
+                  <span>{t('Print Dossier (PDF)', 'নথি প্রিন্ট (PDF)')}</span>
                 </button>
 
                 <button
@@ -1358,7 +1401,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg"
                 >
                   <Share2 className="h-3.5 w-3.5" />
-                  <span>WhatsApp Notice</span>
+                  <span>{t('WhatsApp Notice', 'হোয়াটসঅ্যাপ নোটিশ')}</span>
                 </button>
 
                 <button
@@ -1404,7 +1447,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white/80 font-mono">
-                            Hearing Alert System
+                            {t('Hearing Alert System', 'শুনানির সতর্কতা সংকেত')}
                           </span>
                           <span className="text-xs font-mono font-bold">
                             {alert.label}
@@ -1412,20 +1455,20 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                         </div>
                         <h4 className="text-sm font-bold mt-1">
                           {selectedCase.nextHearingDate
-                            ? `Next Hearing Date: ${selectedCase.nextHearingDate} at ${selectedCase.courtOrAuthority}`
-                            : 'Next hearing date has not been fixed yet'}
+                            ? `${t('Next Hearing Date:', 'পরবর্তী শুনানির তারিখ:')} ${selectedCase.nextHearingDate} at ${selectedCase.courtOrAuthority}`
+                            : t('Next hearing date has not been fixed yet', 'পরবর্তী শুনানির তারিখ এখনো নির্ধারিত হয়নি')}
                         </h4>
                         {selectedCase.type === 'misc_case' && selectedCase.docketDate && (
                           <p className="text-[11px] font-mono text-blue-900 font-semibold mt-0.5">
-                            Docket Registered on: {selectedCase.docketDate}
+                            {t('Docket Registered on:', 'ডকেট দাখিলের তারিখ:')} {selectedCase.docketDate}
                           </p>
                         )}
                         {rtiAlert && (
                           <p className="text-[11px] mt-0.5 font-mono">
-                            RTI 30-Day Statutory Expiry: <b>{selectedCase.rtiDeadlineDate}</b>{' '}
+                            {t('RTI 30-Day Statutory Expiry:', 'আরটিআই ৩০ দিনের সংবিধিবদ্ধ সময়সীমা:')} <b>{selectedCase.rtiDeadlineDate}</b>{' '}
                             {rtiAlert.isExpired
-                              ? '(EXPIRED - First Appeal Required)'
-                              : `(${rtiAlert.daysLeft} days remaining)`}
+                              ? t('(EXPIRED - First Appeal Required)', '(মেয়াদ উত্তীর্ণ - প্রথম আপিল প্রয়োজন)')
+                              : `(${rtiAlert.daysLeft} ${t('days remaining', 'দিন বাকি')})`}
                           </p>
                         )}
                       </div>
@@ -1434,9 +1477,9 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                     <div className="flex items-center gap-2 self-start sm:self-auto">
                       <button
                         onClick={() => handleOpenHearingModal(selectedCase)}
-                        className="px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors whitespace-nowrap"
+                        className="px-3.5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors whitespace-nowrap"
                       >
-                        + Record Hearing Order
+                        {t('+ Record Hearing Order', '+ শুনানির আদেশ লিপিবদ্ধ করুন')}
                       </button>
                     </div>
                   </div>
@@ -1461,17 +1504,29 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                       )}
                     </div>
                   )}
-                  {onOpenPartyLedger && (
-                    <button
-                      onClick={() => {
-                        setSelectedCase(null);
-                        onOpenPartyLedger(selectedCase.partyId);
-                      }}
-                      className="text-indigo-600 hover:underline font-semibold text-[11px] mt-2 inline-block"
-                    >
-                      View Party Statement & Ledger →
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    {onOpenPartyLedger && (
+                      <button
+                        onClick={() => {
+                          setSelectedCase(null);
+                          onOpenPartyLedger(selectedCase.partyId);
+                        }}
+                        className="text-indigo-600 hover:underline font-semibold text-[11px] inline-block"
+                      >
+                        View Party Ledger & Balance →
+                      </button>
+                    )}
+                    {onOpenBillingForCase && (
+                      <button
+                        onClick={() => {
+                          onOpenBillingForCase(selectedCase);
+                        }}
+                        className="text-emerald-700 hover:underline font-semibold text-[11px] inline-block"
+                      >
+                        + Create Bill for this Case →
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Authority & Officers */}

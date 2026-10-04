@@ -16,6 +16,7 @@ import {
   ExpenseRecord,
   CompanyProfile,
 } from '../../types/erp';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ReportsViewProps {
   transactions: Transaction[];
@@ -32,6 +33,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   expenses,
   company,
 }) => {
+  const { t } = useLanguage();
   const [selectedReport, setSelectedReport] = useState<
     'pnl' | 'daybook' | 'gstr1' | 'stock' | 'outstanding'
   >('pnl');
@@ -41,10 +43,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   );
 
   // Financial Calculations for P&L
-  const salesInvoices = transactions.filter((t) => t.type === 'sale_invoice');
-  const salesReturns = transactions.filter((t) => t.type === 'sale_return');
-  const purchaseBills = transactions.filter((t) => t.type === 'purchase_bill');
-  const purchaseReturns = transactions.filter((t) => t.type === 'purchase_return');
+  const salesInvoices = transactions.filter((tx) => tx.type === 'sale_invoice');
+  const salesReturns = transactions.filter((tx) => tx.type === 'sale_return');
+  const purchaseBills = transactions.filter((tx) => tx.type === 'purchase_bill');
+  const purchaseReturns = transactions.filter((tx) => tx.type === 'purchase_return');
 
   const grossSales = salesInvoices.reduce((a, b) => a + b.grandTotal, 0);
   const totalSalesReturns = salesReturns.reduce((a, b) => a + b.grandTotal, 0);
@@ -60,7 +62,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const netProfit = grossProfit - totalOperatingExpenses;
 
   // Day Book Filter
-  const dayBookTxs = transactions.filter((t) => t.date === dayBookDate);
+  const dayBookTxs = transactions.filter((tx) => tx.date === dayBookDate);
   const dayBookExpenses = expenses.filter((e) => e.date === dayBookDate);
 
   // GSTR-1 Summaries
@@ -80,18 +82,29 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     let filename = `Report_${selectedReport}_${new Date().toISOString().split('T')[0]}.csv`;
 
     if (selectedReport === 'pnl') {
-      headers = ['Category', 'Amount'];
+      headers = [t('Category', 'বিভাগ'), t('Amount', 'টাকা')];
       rows = [
-        ['Gross Sales Revenue', grossSales],
-        ['Less: Sales Returns', totalSalesReturns],
-        ['Net Sales Revenue', netSalesRevenue],
-        ['Cost of Goods Sold (Purchases)', netPurchases],
-        ['Gross Profit', grossProfit],
-        ['Operating Expenses', totalOperatingExpenses],
-        ['Net Business Profit / Loss', netProfit],
+        [t('Gross Sales Revenue', 'মোট বিক্রয় আয়'), grossSales],
+        [t('Less: Sales Returns', 'বাদ: বিক্রয় ফেরত'), totalSalesReturns],
+        [t('Net Sales Revenue', 'প্রকৃত বিক্রয় টার্নওভার'), netSalesRevenue],
+        [t('Cost of Goods Sold (Purchases)', 'বিক্রীত পণ্যের ক্রয়মূল্য'), netPurchases],
+        [t('Gross Profit', 'মোট ব্যবসায়িক মুনাফা'), grossProfit],
+        [t('Operating Expenses', 'পরিচালন ব্যয় ও খরচ'), totalOperatingExpenses],
+        [t('Net Business Profit / Loss', 'চূড়ান্ত নিট লাভ বা ক্ষতি'), netProfit],
       ];
     } else if (selectedReport === 'gstr1') {
-      headers = ['Invoice No', 'Date', 'Party Name', 'Party GSTIN', 'Taxable Value', 'CGST', 'SGST', 'IGST', 'Total Tax', 'Invoice Total'];
+      headers = [
+        t('Invoice No', 'ইনভয়েস নং'),
+        t('Date', 'তারিখ'),
+        t('Party Name', 'পার্টির নাম'),
+        t('Party GSTIN', 'জিএসটি নম্বর'),
+        t('Taxable Value', 'করযোগ্য মূল্য'),
+        t('CGST', 'সিজিএসটি'),
+        t('SGST', 'এসজিএসটি'),
+        t('IGST', 'আইজিএসটি'),
+        t('Total Tax', 'মোট কর'),
+        t('Invoice Total', 'ইনভয়েস মোট'),
+      ];
       rows = salesInvoices.map((inv) => [
         `"${inv.invoiceNo}"`,
         `"${inv.date}"`,
@@ -105,7 +118,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         inv.grandTotal,
       ]);
     } else if (selectedReport === 'stock') {
-      headers = ['Item Name', 'SKU', 'Category', 'Stock Qty', 'Unit', 'Purchase Cost', 'Stock Valuation'];
+      headers = [
+        t('Item Name', 'পণ্যের নাম'),
+        t('SKU', 'এসকেইউ'),
+        t('Category', 'বিভাগ'),
+        t('Stock Qty', 'স্টক পরিমাণ'),
+        t('Unit', 'একক'),
+        t('Purchase Cost', 'ক্রয় খরচ'),
+        t('Stock Valuation', 'স্টক মূল্যায়ন'),
+      ];
       rows = items.map((i) => [
         `"${i.name}"`,
         `"${i.sku}"`,
@@ -116,7 +137,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         i.stockQty * i.purchasePrice,
       ]);
     } else if (selectedReport === 'outstanding') {
-      headers = ['Party Name', 'Type', 'Phone', 'Outstanding Balance'];
+      headers = [
+        t('Party Name', 'পার্টির নাম'),
+        t('Type', 'ধরণ'),
+        t('Phone', 'মোবাইল'),
+        t('Outstanding Balance', 'বকেয়া ব্যালেন্স'),
+      ];
       rows = parties
         .filter((p) => p.currentBalance !== 0)
         .map((p) => [
@@ -142,10 +168,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            Financial Statements & ERP Reports
+            {t('Financial Statements & ERP Reports', 'আর্থিক বিবরণী ও ব্যবসায়িক রিপোর্ট')}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Profit & Loss, Day Book, GSTR-1 GST summary, stock valuations & party aging
+            {t(
+              'Profit & Loss, Day Book, GSTR-1 GST summary, stock valuations & party aging',
+              'লাভ-ক্ষতি বিবরণী, দৈনিক ডে-বুক, জিএসটিআর-১ ট্যাক্স রিপোর্ট, স্টক মূল্যায়ন ও বাকি হিসাব'
+            )}
           </p>
         </div>
 
@@ -154,7 +183,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs transition-colors self-start sm:self-auto"
         >
           <Download className="h-3.5 w-3.5" />
-          <span>Export Current Report CSV</span>
+          <span>{t('Export Current Report CSV', 'রিপোর্ট সিএসভি ডাউনলোড')}</span>
         </button>
       </div>
 
@@ -164,51 +193,51 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           onClick={() => setSelectedReport('pnl')}
           className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
             selectedReport === 'pnl'
-              ? 'bg-white text-indigo-700 shadow-xs'
+              ? 'bg-white text-indigo-700 shadow-xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Profit & Loss Statement
+          {t('Profit & Loss Statement', 'লাভ-ক্ষতি হিসাব (P&L)')}
         </button>
         <button
           onClick={() => setSelectedReport('daybook')}
           className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
             selectedReport === 'daybook'
-              ? 'bg-white text-indigo-700 shadow-xs'
+              ? 'bg-white text-indigo-700 shadow-xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Day Book (Daily Ledger)
+          {t('Day Book (Daily Ledger)', 'দৈনিক খাতা (ডে-বুক)')}
         </button>
         <button
           onClick={() => setSelectedReport('gstr1')}
           className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
             selectedReport === 'gstr1'
-              ? 'bg-white text-indigo-700 shadow-xs'
+              ? 'bg-white text-indigo-700 shadow-xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          GSTR-1 (GST Tax Summary)
+          {t('GSTR-1 (GST Tax Summary)', 'জিএসটিআর-১ (ট্যাক্স রিপোর্ট)')}
         </button>
         <button
           onClick={() => setSelectedReport('stock')}
           className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
             selectedReport === 'stock'
-              ? 'bg-white text-indigo-700 shadow-xs'
+              ? 'bg-white text-indigo-700 shadow-xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Stock Valuation & Summary
+          {t('Stock Valuation & Summary', 'মজুত স্টক ও সম্পদ মূল্যায়ন')}
         </button>
         <button
           onClick={() => setSelectedReport('outstanding')}
           className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
             selectedReport === 'outstanding'
-              ? 'bg-white text-indigo-700 shadow-xs'
+              ? 'bg-white text-indigo-700 shadow-xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Party Outstanding (Aging)
+          {t('Party Outstanding (Aging)', 'বকেয়া পাওনা ও দেনা হিসাব')}
         </button>
       </div>
 
@@ -217,23 +246,23 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs text-slate-500">Gross Sales Revenue</span>
+              <span className="text-xs text-slate-500">{t('Gross Sales Revenue', 'মোট বিক্রয় টার্নওভার')}</span>
               <div className="mt-1 text-xl font-bold font-mono text-emerald-700 tabular-nums">
                 {company.currencySymbol}{netSalesRevenue.toLocaleString()}
               </div>
-              <span className="text-[11px] text-slate-400 font-mono">From all settled sales</span>
+              <span className="text-[11px] text-slate-400 font-mono">{t('From all settled sales', 'সমস্ত বিক্রয় ইনভয়েস থেকে')}</span>
             </div>
 
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs text-slate-500">Cost of Goods Sold (Purchases)</span>
+              <span className="text-xs text-slate-500">{t('Cost of Goods Sold (Purchases)', 'বিক্রীত পণ্যের মোট ক্রয়মূল্য')}</span>
               <div className="mt-1 text-xl font-bold font-mono text-slate-800 tabular-nums">
                 {company.currencySymbol}{netPurchases.toLocaleString()}
               </div>
-              <span className="text-[11px] text-slate-400 font-mono">Procurement expense</span>
+              <span className="text-[11px] text-slate-400 font-mono">{t('Procurement expense', 'সাপ্লায়ার ক্রয় বিল থেকে')}</span>
             </div>
 
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs text-slate-500">Net Business Profit</span>
+              <span className="text-xs text-slate-500">{t('Net Business Profit', 'চূড়ান্ত নিট ব্যবসায়িক মুনাফা')}</span>
               <div
                 className={`mt-1 text-2xl font-bold font-mono tabular-nums ${
                   netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'
@@ -241,18 +270,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               >
                 {company.currencySymbol}{netProfit.toLocaleString()}
               </div>
-              <span className="text-[11px] text-slate-400 font-mono">After operating expenses</span>
+              <span className="text-[11px] text-slate-400 font-mono">{t('After operating expenses', 'সমস্ত খরচ বাদের পর')}</span>
             </div>
           </div>
 
           <div className="rounded-xl bg-white border border-slate-200 shadow-xs p-6 max-w-3xl">
             <h3 className="text-sm font-bold text-slate-900 pb-3 border-b border-slate-200 uppercase tracking-wider">
-              Profit & Loss Statement for {company.name}
+              {t(`Profit & Loss Statement for ${company.name}`, `${company.name}-এর লাভ ও ক্ষতির পূর্ণাঙ্গ বিবরণী`)}
             </h3>
 
             <div className="mt-4 space-y-3 text-xs font-mono">
               <div className="flex justify-between py-1 border-b border-slate-100 text-slate-800">
-                <span className="font-sans font-semibold">Gross Sales Invoices</span>
+                <span className="font-sans font-semibold">{t('Gross Sales Invoices', 'মোট বিক্রয় ইনভয়েস')}</span>
                 <span className="font-bold tabular-nums">
                   +{company.currencySymbol}{grossSales.toLocaleString()}
                 </span>
@@ -260,7 +289,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
               {totalSalesReturns > 0 && (
                 <div className="flex justify-between py-1 border-b border-slate-100 text-rose-600">
-                  <span className="font-sans">Less: Sales Returns & Credit Notes</span>
+                  <span className="font-sans">{t('Less: Sales Returns & Credit Notes', 'বাদ: বিক্রয় ফেরত ও ক্রেডিট নোট')}</span>
                   <span className="tabular-nums">
                     -{company.currencySymbol}{totalSalesReturns.toLocaleString()}
                   </span>
@@ -268,28 +297,28 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               )}
 
               <div className="flex justify-between py-1.5 bg-slate-50 px-2 rounded font-bold text-slate-900">
-                <span className="font-sans">Net Sales Turnover</span>
+                <span className="font-sans">{t('Net Sales Turnover', 'প্রকৃত বিক্রয় রাজস্ব')}</span>
                 <span className="tabular-nums">
                   {company.currencySymbol}{netSalesRevenue.toLocaleString()}
                 </span>
               </div>
 
               <div className="flex justify-between py-1 border-b border-slate-100 text-slate-700">
-                <span className="font-sans">Purchases & Direct Procurement</span>
+                <span className="font-sans">{t('Purchases & Direct Procurement', 'ক্রয় ও সংগ্রহ খরচ')}</span>
                 <span className="tabular-nums">
                   -{company.currencySymbol}{netPurchases.toLocaleString()}
                 </span>
               </div>
 
               <div className="flex justify-between py-2 border-y border-slate-200 font-bold text-slate-900 text-sm">
-                <span className="font-sans">Gross Profit</span>
+                <span className="font-sans">{t('Gross Profit', 'মোট লাভ (গ্রস প্রফিট)')}</span>
                 <span className="text-indigo-700 tabular-nums">
                   {company.currencySymbol}{grossProfit.toLocaleString()}
                 </span>
               </div>
 
               <div className="pt-2 text-slate-500 font-sans uppercase font-bold text-[11px]">
-                Operating Overheads & Expenses
+                {t('Operating Overheads & Expenses', 'পরিচালন ও অফিস খরচসমূহ')}
               </div>
 
               {expenses.map((e) => (
@@ -302,14 +331,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               ))}
 
               <div className="flex justify-between py-1.5 bg-slate-50 px-2 rounded text-slate-700">
-                <span className="font-sans font-semibold">Total Operating Overheads</span>
+                <span className="font-sans font-semibold">{t('Total Operating Overheads', 'মোট পরিচালন ব্যয়')}</span>
                 <span className="font-bold tabular-nums">
                   -{company.currencySymbol}{totalOperatingExpenses.toLocaleString()}
                 </span>
               </div>
 
               <div className="flex justify-between py-3 border-y-2 border-slate-900 text-base font-bold text-slate-900 mt-4">
-                <span className="font-sans uppercase">Net Business Profit / (Loss)</span>
+                <span className="font-sans uppercase">{t('Net Business Profit / (Loss)', 'চূড়ান্ত নিট ব্যবসায়িক লাভ / (ক্ষতি)')}</span>
                 <span
                   className={`tabular-nums ${
                     netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'
@@ -327,7 +356,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {selectedReport === 'daybook' && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-slate-700">Select Date for Day Book:</span>
+            <span className="text-xs font-semibold text-slate-700">{t('Select Date for Day Book:', 'ডে-বুকের তারিখ নির্বাচন করুন:')}</span>
             <input
               type="date"
               value={dayBookDate}
@@ -338,44 +367,54 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           <div className="rounded-xl bg-white border border-slate-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-200 font-semibold text-xs text-slate-700">
-              Transactions & Vouchers Recorded on {dayBookDate}
+              {t(`Transactions & Vouchers Recorded on ${dayBookDate}`, `${dayBookDate} তারিখে লিপিবদ্ধ সমস্ত লেনদেন ও খরচ`)}
             </div>
 
             {dayBookTxs.length === 0 && dayBookExpenses.length === 0 ? (
               <div className="p-12 text-center text-xs text-slate-500">
-                No transactions or expenses recorded on this date.
+                {t('No transactions or expenses recorded on this date.', 'এই তারিখে কোনো লেনদেন বা খরচ পাওয়া যায়নি।')}
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                      <th className="py-2.5 px-4">Ref #</th>
-                      <th className="py-2.5 px-3">Type</th>
-                      <th className="py-2.5 px-3">Entity / Details</th>
-                      <th className="py-2.5 px-3 text-right">Inflow (Debit)</th>
-                      <th className="py-2.5 px-4 text-right">Outflow (Credit)</th>
+                      <th className="py-2.5 px-4">{t('Ref #', 'রেফারেন্স')}</th>
+                      <th className="py-2.5 px-3">{t('Type', 'ধরণ')}</th>
+                      <th className="py-2.5 px-3">{t('Entity / Details', 'পার্টি / বিবরণ')}</th>
+                      <th className="py-2.5 px-3 text-right">{t('Inflow (Debit)', 'জমা (+)')}</th>
+                      <th className="py-2.5 px-4 text-right">{t('Outflow (Credit)', 'খরচ (-)')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {dayBookTxs.map((t) => (
-                      <tr key={t.id} className="hover:bg-slate-50/70">
-                        <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{t.invoiceNo}</td>
-                        <td className="py-2.5 px-3 capitalize font-semibold">{t.type.replace('_', ' ')}</td>
-                        <td className="py-2.5 px-3">{t.partyName}</td>
+                    {dayBookTxs.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-slate-50/70">
+                        <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{tx.invoiceNo}</td>
+                        <td className="py-2.5 px-3 capitalize font-semibold">
+                          {tx.type === 'sale_invoice'
+                            ? t('Sale Invoice', 'বিক্রয় ইনভয়েস')
+                            : tx.type === 'payment_in'
+                            ? t('Payment Received', 'পেমেন্ট গ্রহণ')
+                            : tx.type === 'purchase_bill'
+                            ? t('Purchase Bill', 'ক্রয় বিল')
+                            : tx.type === 'payment_out'
+                            ? t('Payment Out', 'পেমেন্ট প্রদান')
+                            : tx.type}
+                        </td>
+                        <td className="py-2.5 px-3">{tx.partyName}</td>
                         <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-700 tabular-nums">
-                          {t.paidAmount > 0 && t.type === 'sale_invoice' ? `${company.currencySymbol}${t.paidAmount.toLocaleString()}` : '-'}
+                          {tx.paidAmount > 0 && tx.type === 'sale_invoice' ? `${company.currencySymbol}${tx.paidAmount.toLocaleString()}` : '-'}
                         </td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold text-rose-700 tabular-nums">
-                          {t.paidAmount > 0 && t.type === 'purchase_bill' ? `${company.currencySymbol}${t.paidAmount.toLocaleString()}` : '-'}
+                          {tx.paidAmount > 0 && tx.type === 'purchase_bill' ? `${company.currencySymbol}${tx.paidAmount.toLocaleString()}` : '-'}
                         </td>
                       </tr>
                     ))}
                     {dayBookExpenses.map((exp) => (
                       <tr key={exp.id} className="hover:bg-slate-50/70">
                         <td className="py-2.5 px-4 font-mono text-slate-500">EXP-{exp.id.slice(-4)}</td>
-                        <td className="py-2.5 px-3 font-semibold text-rose-700">Expense</td>
-                        <td className="py-2.5 px-3">{exp.category} ({exp.recipientName || 'Direct'})</td>
+                        <td className="py-2.5 px-3 font-semibold text-rose-700">{t('Expense', 'খরচ')}</td>
+                        <td className="py-2.5 px-3">{exp.category} ({exp.recipientName || t('Direct', 'সরাসরি')})</td>
                         <td className="py-2.5 px-3 text-right font-mono">-</td>
                         <td className="py-2.5 px-4 text-right font-mono font-bold text-rose-700 tabular-nums">
                           {company.currencySymbol}{exp.amount.toLocaleString()}
@@ -395,25 +434,25 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs text-slate-500">Taxable Sales Value</span>
+              <span className="text-xs text-slate-500">{t('Taxable Sales Value', 'মোট করযোগ্য বিক্রয়')}</span>
               <div className="mt-1 text-xl font-bold font-mono text-slate-900 tabular-nums">
                 {company.currencySymbol}{gstrTaxableSales.toLocaleString()}
               </div>
             </div>
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs text-slate-500">CGST Collected</span>
+              <span className="text-xs text-slate-500">{t('CGST Collected', 'আদায়কিত CGST')}</span>
               <div className="mt-1 text-xl font-bold font-mono text-indigo-700 tabular-nums">
                 {company.currencySymbol}{gstrCgstTotal.toLocaleString()}
               </div>
             </div>
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs text-slate-500">SGST Collected</span>
+              <span className="text-xs text-slate-500">{t('SGST Collected', 'আদায়কিত SGST')}</span>
               <div className="mt-1 text-xl font-bold font-mono text-indigo-700 tabular-nums">
                 {company.currencySymbol}{gstrSgstTotal.toLocaleString()}
               </div>
             </div>
             <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs text-slate-500">IGST (Inter-State)</span>
+              <span className="text-xs text-slate-500">{t('IGST (Inter-State)', 'আদায়কিত IGST')}</span>
               <div className="mt-1 text-xl font-bold font-mono text-blue-700 tabular-nums">
                 {company.currencySymbol}{gstrIgstTotal.toLocaleString()}
               </div>
@@ -422,22 +461,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
           <div className="rounded-xl bg-white border border-slate-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-200 font-semibold text-xs text-slate-700">
-              GSTR-1 Outward Supplies (B2B & B2C Taxable Sales)
+              {t('GSTR-1 Outward Supplies (B2B & B2C Taxable Sales)', 'জিএসটিআর-১ আউটওয়ার্ড সাপ্লাই (করযোগ্য বিক্রয় তালিকা)')}
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                    <th className="py-2.5 px-4">Invoice #</th>
-                    <th className="py-2.5 px-3">Date</th>
-                    <th className="py-2.5 px-3">Customer</th>
-                    <th className="py-2.5 px-3">GSTIN</th>
-                    <th className="py-2.5 px-3 text-right">Taxable Val</th>
-                    <th className="py-2.5 px-2 text-right">CGST</th>
-                    <th className="py-2.5 px-2 text-right">SGST</th>
-                    <th className="py-2.5 px-2 text-right">IGST</th>
-                    <th className="py-2.5 px-4 text-right">Total Invoice</th>
+                    <th className="py-2.5 px-4">{t('Invoice #', 'ইনভয়েস নং')}</th>
+                    <th className="py-2.5 px-3">{t('Date', 'তারিখ')}</th>
+                    <th className="py-2.5 px-3">{t('Customer', 'গ্রাহক')}</th>
+                    <th className="py-2.5 px-3">{t('GSTIN', 'জিএসটিIN')}</th>
+                    <th className="py-2.5 px-3 text-right">{t('Taxable Val', 'করযোগ্য মূল্য')}</th>
+                    <th className="py-2.5 px-2 text-right">{t('CGST', 'সিজিএসটি')}</th>
+                    <th className="py-2.5 px-2 text-right">{t('SGST', 'এসজিএসটি')}</th>
+                    <th className="py-2.5 px-2 text-right">{t('IGST', 'আইজিএসটি')}</th>
+                    <th className="py-2.5 px-4 text-right">{t('Total Invoice', 'মোট ইনভয়েস')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -446,7 +485,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                       <td className="py-2.5 px-4 font-mono font-bold text-slate-900">{inv.invoiceNo}</td>
                       <td className="py-2.5 px-3 font-mono text-slate-500">{inv.date}</td>
                       <td className="py-2.5 px-3 font-medium text-slate-900">{inv.partyName}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-600">{inv.partyGstin || 'Consumer (B2C)'}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">{inv.partyGstin || t('Consumer (B2C)', 'খুচরা গ্রাহক (B2C)')}</td>
                       <td className="py-2.5 px-3 text-right font-mono tabular-nums">{company.currencySymbol}{inv.taxableTotal.toLocaleString()}</td>
                       <td className="py-2.5 px-2 text-right font-mono tabular-nums text-slate-600">{inv.cgstTotal > 0 ? `${company.currencySymbol}${inv.cgstTotal.toLocaleString()}` : '-'}</td>
                       <td className="py-2.5 px-2 text-right font-mono tabular-nums text-slate-600">{inv.sgstTotal > 0 ? `${company.currencySymbol}${inv.sgstTotal.toLocaleString()}` : '-'}</td>
@@ -467,19 +506,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       {selectedReport === 'stock' && (
         <div className="rounded-xl bg-white border border-slate-200 shadow-xs overflow-hidden">
           <div className="p-4 border-b border-slate-200 font-semibold text-xs text-slate-700">
-            Stock Valuation & Reorder Inventory Report
+            {t('Stock Valuation & Reorder Inventory Report', 'স্টক মূল্যায়ন ও পুনঃঅর্ডার ইনভেন্টরি রিপোর্ট')}
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase tracking-wider text-[11px]">
-                  <th className="py-2.5 px-4">Item Name</th>
-                  <th className="py-2.5 px-3">SKU</th>
-                  <th className="py-2.5 px-3">Category</th>
-                  <th className="py-2.5 px-3 text-right">In Stock</th>
-                  <th className="py-2.5 px-3 text-right">Purchase Price</th>
-                  <th className="py-2.5 px-4 text-right">Valuation (Cost)</th>
+                  <th className="py-2.5 px-4">{t('Item Name', 'পণ্যের নাম')}</th>
+                  <th className="py-2.5 px-3">{t('SKU', 'এসকেইউ')}</th>
+                  <th className="py-2.5 px-3">{t('Category', 'বিভাগ')}</th>
+                  <th className="py-2.5 px-3 text-right">{t('In Stock', 'মজুত স্টক')}</th>
+                  <th className="py-2.5 px-3 text-right">{t('Purchase Price', 'ক্রয় মূল্য')}</th>
+                  <th className="py-2.5 px-4 text-right">{t('Valuation (Cost)', 'স্টক মূল্যায়ন')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -512,7 +551,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           <div className="rounded-xl bg-white border border-slate-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-200 bg-blue-50/50 flex justify-between items-center">
               <span className="font-bold text-xs text-blue-900 uppercase tracking-wider">
-                Customer Receivables (To Collect)
+                {t('Customer Receivables (To Collect)', 'মক্কেল / গ্রাহকের কাছে বকেয়া পাওনা (পাবেন)')}
               </span>
               <span className="font-mono font-bold text-blue-700 text-xs">
                 {company.currencySymbol}
@@ -538,7 +577,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           <div className="rounded-xl bg-white border border-slate-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-200 bg-rose-50/50 flex justify-between items-center">
               <span className="font-bold text-xs text-rose-900 uppercase tracking-wider">
-                Supplier Payables (To Pay)
+                {t('Supplier Payables (To Pay)', 'সাপ্লায়ার / বিক্রেতাকে প্রদেয় বাকি (দেবেন)')}
               </span>
               <span className="font-mono font-bold text-rose-700 text-xs">
                 {company.currencySymbol}

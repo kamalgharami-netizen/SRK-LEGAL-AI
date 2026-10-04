@@ -1,6 +1,6 @@
 {
   "name": "OpenERP Lite",
-  "description": "A comprehensive Vyapar-style ERP for small businesses: invoicing, GST billing, inventory, party ledgers, cash & bank, expenses, and financial reports.",
+  "description": "SRK ERP Software: A comprehensive business and legal management ERP for billing, GST invoicing, inventory, party ledgers, cash & bank, and case tracking.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

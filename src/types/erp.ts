@@ -20,7 +20,7 @@ export interface Party {
 }
 
 export type ItemType = 'product' | 'service';
-export type UnitType = 'PCS' | 'BOX' | 'KG' | 'LTR' | 'MTR' | 'SET' | 'NOS' | 'BAG';
+export type UnitType = 'PCS' | 'BOX' | 'KG' | 'LTR' | 'MTR' | 'SET' | 'NOS' | 'BAG' | 'SERVICE';
 
 export interface Item {
   id: string;
