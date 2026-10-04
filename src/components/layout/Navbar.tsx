@@ -59,11 +59,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Receipt className="h-5 w-5" />
           </div>
           <div>
-            <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900 block leading-tight">
-              SRK ERP Software
+            <span className="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 block leading-tight">
+              SRK ERP & Daily Management
             </span>
-            <span className="text-[11px] font-medium text-slate-500 block leading-none">
-              {company.name} · <span className="text-indigo-600 font-semibold">{t('FY 2025-26', 'অর্থবছর ২০২৫-২৬')}</span>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 block leading-none">
+              SRK ERP AND DAILY MANAGEMENT SOFTWARE · <span className="text-indigo-600 font-semibold">{t('FY 2025-26', 'অর্থবছর ২০২৫-২৬')}</span>
             </span>
           </div>
         </button>

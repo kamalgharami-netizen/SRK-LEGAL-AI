@@ -1,6 +1,6 @@
 {
-  "name": "OpenERP Lite",
-  "description": "SRK ERP Software: A comprehensive business and legal management ERP for billing, GST invoicing, inventory, party ledgers, cash & bank, and case tracking.",
+  "name": "SRK ERP and Daily Management Software",
+  "description": "SRK ERP AND DAILY MANAGEMENT SOFTWARE: A comprehensive business and legal management ERP for billing, GST invoicing, inventory, party ledgers, cash & bank, case tracking, and BL&LRO mutation management.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

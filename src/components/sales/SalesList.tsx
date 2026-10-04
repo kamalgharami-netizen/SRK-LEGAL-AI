@@ -25,6 +25,7 @@ interface SalesListProps {
   onRecordPayment: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
   onConvertToInvoice: (estimate: Transaction) => void;
+  onDispatchInvoice?: (tx: Transaction) => void;
   globalSearch: string;
 }
 
@@ -38,6 +39,7 @@ export const SalesList: React.FC<SalesListProps> = ({
   onRecordPayment,
   onDeleteTransaction,
   onConvertToInvoice,
+  onDispatchInvoice,
   globalSearch,
 }) => {
   const { t } = useLanguage();
@@ -109,6 +111,11 @@ export const SalesList: React.FC<SalesListProps> = ({
   };
 
   const handleShareWhatsApp = (invoice: Transaction) => {
+    if (onDispatchInvoice) {
+      onDispatchInvoice(invoice);
+      return;
+    }
+
     const text = t(
       `Hello ${invoice.partyName},\n\nHere is your Invoice #${invoice.invoiceNo} from ${company.name}.\n\nTotal: ${company.currencySymbol}${invoice.grandTotal.toLocaleString()}\nPaid: ${company.currencySymbol}${invoice.paidAmount.toLocaleString()}\nDue: ${company.currencySymbol}${invoice.balanceDue.toLocaleString()}\n\nThank you for doing business with us!`,
       `শ্রদ্ধেয় ${invoice.partyName},\n\n${company.name}-এর পক্ষ থেকে আপনার ইনভয়েস #${invoice.invoiceNo}।\n\nমোট: ${company.currencySymbol}${invoice.grandTotal.toLocaleString()}\nপরিশোধিত: ${company.currencySymbol}${invoice.paidAmount.toLocaleString()}\nবকেয়া: ${company.currencySymbol}${invoice.balanceDue.toLocaleString()}\n\nধন্যবাদ!`
@@ -117,7 +124,16 @@ export const SalesList: React.FC<SalesListProps> = ({
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {}
   };
 
   return (

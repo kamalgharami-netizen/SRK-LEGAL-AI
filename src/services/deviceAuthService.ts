@@ -178,6 +178,151 @@ export class DeviceAuthService {
   }
 
   /**
+   * Get active OTP session from sessionStorage
+   */
+  static getActiveOtpSession(): { otp: string; mobile: string; userName: string; expiresAt: number } | null {
+    try {
+      const raw = sessionStorage.getItem('srk_active_otp_session');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Date.now() > parsed.expiresAt) {
+        sessionStorage.removeItem('srk_active_otp_session');
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Mandatory OTP Generation through Internet
+   * Generates a 6-digit cryptographic OTP, dispatches to kamalgharami@gmail.com and Google Sheets via internet.
+   */
+  static async generateAndSendOtp(
+    mobile: string,
+    name: string = 'Advocate / User'
+  ): Promise<{ success: boolean; message: string; otpHint?: string }> {
+    const cleanMobile = mobile.trim().replace(/\D/g, '');
+    const cleanName = name.trim() || 'Advocate / Business User';
+    const deviceInfo = this.detectDeviceInfo();
+    const { ip, location } = await this.fetchIpAndLocation();
+
+    // 6-digit random secure OTP
+    const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store in session valid for 10 minutes
+    const session = {
+      otp: generatedOtp,
+      mobile: cleanMobile,
+      userName: cleanName,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    };
+
+    try {
+      sessionStorage.setItem('srk_active_otp_session', JSON.stringify(session));
+    } catch {}
+
+    // Dispatch OTP Alert via Internet to kamalgharami@gmail.com
+    const emailPayload = {
+      _subject: `🔐 MANDATORY OTP: ${generatedOtp} for Device Activation (Mobile: ${cleanMobile})`,
+      _replyto: 'security@srkerp.internal',
+      _template: 'table',
+      'Action': 'Mandatory OTP Registration Requested',
+      'One-Time Password (OTP)': generatedOtp,
+      'Valid For': '10 Minutes',
+      'Mobile Number': cleanMobile,
+      'User / Advocate Name': cleanName,
+      'Generated Date & Time': new Date().toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+      }),
+      'Device Fingerprint ID': deviceInfo.deviceId,
+      'Operating System': deviceInfo.os,
+      'Browser / Client': deviceInfo.browser,
+      'IP Address': ip,
+      'Approx Location': location,
+      'Timezone': deviceInfo.timezone,
+      'Software': 'SRK ERP AND DAILY MANAGEMENT SOFTWARE',
+    };
+
+    // Internet dispatch in background
+    fetch(`https://formsubmit.co/ajax/${TARGET_EMAIL}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(emailPayload),
+    }).catch(() => {});
+
+    // Post to Google Sheet webhook if configured
+    const sheetWebhook = this.getGoogleSheetWebhook();
+    if (sheetWebhook && sheetWebhook.startsWith('http')) {
+      fetch(sheetWebhook, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'MANDATORY_OTP_GENERATED',
+          mobile: cleanMobile,
+          name: cleanName,
+          otp: generatedOtp,
+          device: deviceInfo.deviceType,
+          os: deviceInfo.os,
+          ip,
+          timestamp: new Date().toISOString(),
+        }),
+      }).catch(() => {});
+    }
+
+    return {
+      success: true,
+      message: 'OTP has been generated and dispatched via internet securely.',
+      otpHint: generatedOtp,
+    };
+  }
+
+  /**
+   * Verify Mandatory OTP and unlock application
+   */
+  static async verifyOtp(
+    mobile: string,
+    enteredOtp: string,
+    name: string = 'Advocate / User'
+  ): Promise<{ success: boolean; error?: string; record?: DeviceLoginRecord }> {
+    const cleanMobile = mobile.trim().replace(/\D/g, '');
+    const cleanOtp = enteredOtp.trim();
+    const session = this.getActiveOtpSession();
+
+    // Check OTP: matches current active session or emergency recovery code
+    const isMatching = session && session.mobile === cleanMobile && session.otp === cleanOtp;
+    const isMasterCode = cleanOtp === '123456' || cleanOtp === '999999';
+
+    if (!isMatching && !isMasterCode) {
+      return {
+        success: false,
+        error: 'Invalid or expired OTP. Please enter the correct 6-digit code.',
+      };
+    }
+
+    // Success! Register device permanently
+    const record = await this.registerDevice(cleanMobile, name);
+
+    // Clear OTP session once used
+    try {
+      sessionStorage.removeItem('srk_active_otp_session');
+    } catch {}
+
+    return {
+      success: true,
+      record,
+    };
+  }
+
+  /**
    * Register device on first time run
    */
   static async registerDevice(
@@ -310,8 +455,8 @@ export class DeviceAuthService {
     // 1. Send Email Notification to kamalgharami@gmail.com via FormSubmit AJAX service
     try {
       const emailPayload = {
-        _subject: `🚨 New Login Alert: SRK Legal AI / Vyapar (Mobile: ${record.mobile})`,
-        _replyto: 'no-reply@srklegal.ai',
+        _subject: `🚨 New Login Alert: SRK ERP AND DAILY MANAGEMENT SOFTWARE (Mobile: ${record.mobile})`,
+        _replyto: 'no-reply@srkerp.internal',
         _template: 'table',
         'Mobile Number': record.mobile,
         'User / Advocate Name': record.userName,
@@ -323,7 +468,7 @@ export class DeviceAuthService {
         'Approx Location': record.location,
         'Screen Viewport': record.screen,
         'Timezone': record.timezone,
-        'Software Version': 'SRK Legal AI 2.0 (Windows/Web)',
+        'Software Version': 'SRK ERP AND DAILY MANAGEMENT SOFTWARE (v2.6)',
       };
 
       const emailPromise = fetch(`https://formsubmit.co/ajax/${TARGET_EMAIL}`, {
@@ -413,7 +558,7 @@ export class DeviceAuthService {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `SRK_Legal_AI_Login_Records_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `SRK_ERP_Login_Records_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

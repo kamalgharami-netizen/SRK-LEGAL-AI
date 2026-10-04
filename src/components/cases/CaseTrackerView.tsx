@@ -44,6 +44,7 @@ interface CaseTrackerViewProps {
   onOpenPartyLedger?: (partyId: string) => void;
   onAddTaskForCase?: (caseId: string, caseNo: string, title: string, dueDate: string) => void;
   onOpenBillingForCase?: (c: LegalCase) => void;
+  onDispatchCase?: (c: LegalCase) => void;
   globalSearch: string;
 }
 
@@ -58,6 +59,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
   onOpenPartyLedger,
   onAddTaskForCase,
   onOpenBillingForCase,
+  onDispatchCase,
   globalSearch,
 }) => {
   const { t } = useLanguage();
@@ -564,6 +566,11 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
   };
 
   const handleShareWhatsAppStatus = (c: LegalCase) => {
+    if (onDispatchCase) {
+      onDispatchCase(c);
+      return;
+    }
+
     const isToday = c.nextHearingDate === todayStr;
     const dateNotice = c.nextHearingDate
       ? `Next Hearing Date: ${c.nextHearingDate}${isToday ? ' (SCHEDULED FOR TODAY)' : ''}`
@@ -582,7 +589,16 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
     const url = cleanPhone
       ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`
       : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {}
   };
 
   // Export cases to Excel (.xls XML format) with full fields

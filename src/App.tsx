@@ -33,6 +33,10 @@ import { DailyTasksDrawer } from './components/cases/DailyTasksDrawer';
 import { WorkDashboardView } from './components/dashboard/WorkDashboardView';
 import { DeviceRegistrationModal } from './components/auth/DeviceRegistrationModal';
 import { DeviceAuthService } from './services/deviceAuthService';
+import { CompanySetupModal } from './components/company/CompanySetupModal';
+import { ClientPublicPortalModal } from './components/portal/ClientPublicPortalModal';
+import { DispatchNotificationModal } from './components/portal/DispatchNotificationModal';
+import { ClientDispatchService, ClientNotificationLog } from './services/clientDispatchService';
 
 export default function App() {
   // Navigation, mode & global search
@@ -67,6 +71,64 @@ export default function App() {
 
   const [isDailyTasksDrawerOpen, setIsDailyTasksDrawerOpen] = useState(false);
   const [isDeviceRegistrationOpen, setIsDeviceRegistrationOpen] = useState(!DeviceAuthService.isRegistered());
+
+  // Client Public Portal Modal (opens when client visits view URL or clicks view)
+  const [clientPortalState, setClientPortalState] = useState<{
+    isOpen: boolean;
+    type: 'invoice' | 'case';
+    invoice?: Transaction | null;
+    caseItem?: LegalCase | null;
+    party?: Party | null;
+  }>({ isOpen: false, type: 'invoice' });
+
+  // Outbound Dispatch Notification Modal (triggered on billing or case save)
+  const [dispatchAlert, setDispatchAlert] = useState<{
+    isOpen: boolean;
+    type: 'invoice' | 'case';
+    invoice?: Transaction | null;
+    caseItem?: LegalCase | null;
+    party?: Party | null;
+    log?: ClientNotificationLog | null;
+    url: string;
+    waUrl?: string;
+    message?: string;
+  } | null>(null);
+
+  // Check URL Query params (?view=invoice&id=... or ?view=case&id=...) on mount
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const view = searchParams.get('view');
+      const id = searchParams.get('id');
+      if (view === 'invoice' && id) {
+        const allTx = StorageService.getTransactions();
+        const found = allTx.find((t) => t.id === id);
+        if (found) {
+          const allParties = StorageService.getParties();
+          const p = allParties.find((x) => x.id === found.partyId);
+          setClientPortalState({
+            isOpen: true,
+            type: 'invoice',
+            invoice: found,
+            party: p || null,
+          });
+        }
+      } else if (view === 'case' && id) {
+        const allCases = StorageService.getCases();
+        const found = allCases.find((c) => c.id === id);
+        if (found) {
+          const allParties = StorageService.getParties();
+          const p = allParties.find((x) => x.id === found.partyId);
+          setClientPortalState({
+            isOpen: true,
+            type: 'case',
+            caseItem: found,
+            party: p || null,
+          });
+        }
+      }
+    } catch {}
+  }, []);
 
   // Record session login audit on app start if device already registered
   useEffect(() => {
@@ -130,7 +192,7 @@ export default function App() {
     setIsInvoiceEditorOpen(true);
   };
 
-  const handleSaveTransaction = (tx: Transaction, andPrint?: boolean) => {
+  const handleSaveTransaction = async (tx: Transaction, andPrint?: boolean) => {
     StorageService.saveTransaction(tx);
     reloadData();
     setIsInvoiceEditorOpen(false);
@@ -139,6 +201,47 @@ export default function App() {
       setSelectedPrintInvoice(tx);
       setIsPrintModalOpen(true);
     }
+
+    // Auto-dispatch bill to client's registered mobile / WhatsApp via internet
+    if (tx.type === 'sale_invoice' || tx.type === 'estimate') {
+      const foundParty = parties.find((p) => p.id === tx.partyId);
+      const result = await ClientDispatchService.dispatchInvoiceNotification(
+        tx,
+        foundParty,
+        company,
+        false
+      );
+      setDispatchAlert({
+        isOpen: true,
+        type: 'invoice',
+        invoice: tx,
+        party: foundParty || null,
+        log: result.log,
+        url: result.url,
+        waUrl: result.waUrl,
+        message: result.message,
+      });
+    }
+  };
+
+  const handleManualDispatchInvoice = async (tx: Transaction) => {
+    const foundParty = parties.find((p) => p.id === tx.partyId);
+    const result = await ClientDispatchService.dispatchInvoiceNotification(
+      tx,
+      foundParty,
+      company,
+      false
+    );
+    setDispatchAlert({
+      isOpen: true,
+      type: 'invoice',
+      invoice: tx,
+      party: foundParty || null,
+      log: result.log,
+      url: result.url,
+      waUrl: result.waUrl,
+      message: result.message,
+    });
   };
 
   const handleDeleteTransaction = (id: string) => {
@@ -254,9 +357,48 @@ export default function App() {
   };
 
   // Case Tracker Handlers
-  const handleSaveCase = (c: LegalCase) => {
+  const handleSaveCase = async (c: LegalCase) => {
     StorageService.saveCase(c);
     reloadData();
+
+    // Auto-dispatch case status update to registered mobile / WhatsApp via internet
+    const foundParty = parties.find((p) => p.id === c.partyId);
+    const result = await ClientDispatchService.dispatchCaseNotification(
+      c,
+      foundParty,
+      company,
+      false
+    );
+    setDispatchAlert({
+      isOpen: true,
+      type: 'case',
+      caseItem: c,
+      party: foundParty || null,
+      log: result.log,
+      url: result.url,
+      waUrl: result.waUrl,
+      message: result.message,
+    });
+  };
+
+  const handleManualDispatchCase = async (c: LegalCase) => {
+    const foundParty = parties.find((p) => p.id === c.partyId);
+    const result = await ClientDispatchService.dispatchCaseNotification(
+      c,
+      foundParty,
+      company,
+      false
+    );
+    setDispatchAlert({
+      isOpen: true,
+      type: 'case',
+      caseItem: c,
+      party: foundParty || null,
+      log: result.log,
+      url: result.url,
+      waUrl: result.waUrl,
+      message: result.message,
+    });
   };
 
   const handleDeleteCase = (id: string) => {
@@ -552,6 +694,7 @@ export default function App() {
                 };
                 handleSaveTask(newTask);
               }}
+              onDispatchCase={handleManualDispatchCase}
               globalSearch={globalSearch}
             />
           )}
@@ -567,6 +710,7 @@ export default function App() {
               onRecordPayment={handleOpenPaymentForInvoice}
               onDeleteTransaction={handleDeleteTransaction}
               onConvertToInvoice={handleConvertEstimateToInvoice}
+              onDispatchInvoice={handleManualDispatchInvoice}
               globalSearch={globalSearch}
             />
           )}
@@ -718,6 +862,42 @@ export default function App() {
         onRegistered={() => {
           setIsDeviceRegistrationOpen(false);
         }}
+      />
+
+      {/* Client Outbound Dispatch Notification Modal (When bill or case happens) */}
+      {dispatchAlert && (
+        <DispatchNotificationModal
+          isOpen={dispatchAlert.isOpen}
+          onClose={() => setDispatchAlert(null)}
+          type={dispatchAlert.type}
+          invoice={dispatchAlert.invoice}
+          caseItem={dispatchAlert.caseItem}
+          party={dispatchAlert.party}
+          log={dispatchAlert.log}
+          url={dispatchAlert.url}
+          waUrl={dispatchAlert.waUrl}
+          message={dispatchAlert.message}
+          onOpenClientPortal={() => {
+            setClientPortalState({
+              isOpen: true,
+              type: dispatchAlert.type,
+              invoice: dispatchAlert.invoice,
+              caseItem: dispatchAlert.caseItem,
+              party: dispatchAlert.party,
+            });
+          }}
+        />
+      )}
+
+      {/* Client Public Live View & Print Portal Modal */}
+      <ClientPublicPortalModal
+        isOpen={clientPortalState.isOpen}
+        onClose={() => setClientPortalState({ isOpen: false, type: 'invoice' })}
+        type={clientPortalState.type}
+        invoice={clientPortalState.invoice}
+        caseItem={clientPortalState.caseItem}
+        company={company}
+        party={clientPortalState.party}
       />
     </div>
   );

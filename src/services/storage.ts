@@ -1248,6 +1248,7 @@ export class StorageService {
     const db = {
       version: '1.0',
       exportedAt: new Date().toISOString(),
+      software: 'SRK ERP AND DAILY MANAGEMENT SOFTWARE',
       company: this.getCompany(),
       parties: this.getParties(),
       items: this.getItems(),
@@ -1259,6 +1260,82 @@ export class StorageService {
       tasks: this.getTasks(),
     };
     return JSON.stringify(db, null, 2);
+  }
+
+  // Inspect and parse backup payload before importing
+  static parseBackupStats(jsonString: string): {
+    isValid: boolean;
+    error?: string;
+    version?: string;
+    exportedAt?: string;
+    companyName?: string;
+    partiesCount: number;
+    itemsCount: number;
+    transactionsCount: number;
+    casesCount: number;
+    accountsCount: number;
+    tasksCount: number;
+  } {
+    try {
+      const data = JSON.parse(jsonString);
+      if (!data || typeof data !== 'object') {
+        return {
+          isValid: false,
+          error: 'Invalid file format: Data is not a valid JSON object.',
+          partiesCount: 0,
+          itemsCount: 0,
+          transactionsCount: 0,
+          casesCount: 0,
+          accountsCount: 0,
+          tasksCount: 0,
+        };
+      }
+
+      // Check if at least one core ERP key exists
+      const hasCoreData =
+        Boolean(data.company) ||
+        Array.isArray(data.parties) ||
+        Array.isArray(data.transactions) ||
+        Array.isArray(data.cases) ||
+        Array.isArray(data.items);
+
+      if (!hasCoreData) {
+        return {
+          isValid: false,
+          error: 'File does not contain valid SRK ERP backup data.',
+          partiesCount: 0,
+          itemsCount: 0,
+          transactionsCount: 0,
+          casesCount: 0,
+          accountsCount: 0,
+          tasksCount: 0,
+        };
+      }
+
+      return {
+        isValid: true,
+        version: data.version || '1.0',
+        exportedAt: data.exportedAt || new Date().toISOString(),
+        companyName: data.company?.name || 'Unnamed Business',
+        partiesCount: Array.isArray(data.parties) ? data.parties.length : 0,
+        itemsCount: Array.isArray(data.items) ? data.items.length : 0,
+        transactionsCount: Array.isArray(data.transactions) ? data.transactions.length : 0,
+        casesCount: Array.isArray(data.cases) ? data.cases.length : 0,
+        accountsCount: Array.isArray(data.accounts) ? data.accounts.length : 0,
+        tasksCount: Array.isArray(data.tasks) ? data.tasks.length : 0,
+      };
+    } catch (e) {
+      return {
+        isValid: false,
+        error: 'JSON parsing failed. Please verify the backup file.',
+        partiesCount: 0,
+        itemsCount: 0,
+        transactionsCount: 0,
+        casesCount: 0,
+        accountsCount: 0,
+        tasksCount: 0,
+      };
+    }
   }
 
   // Import full backup JSON
@@ -1274,10 +1351,85 @@ export class StorageService {
       if (data.adjustments) localStorage.setItem(STORAGE_KEYS.ADJUSTMENTS, JSON.stringify(data.adjustments));
       if (data.cases) localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(data.cases));
       if (data.tasks) localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(data.tasks));
+      
+      // Mark company setup as completed
+      this.setCompanySetupCompleted(true);
       return true;
     } catch (e) {
       console.error('Failed to import database:', e);
       return false;
+    }
+  }
+
+  // Check if company initial setup or data restore has been completed
+  static isCompanySetupCompleted(): boolean {
+    try {
+      return localStorage.getItem('srk_company_setup_completed') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  static setCompanySetupCompleted(status: boolean = true): void {
+    try {
+      localStorage.setItem('srk_company_setup_completed', status ? 'true' : 'false');
+    } catch {}
+  }
+
+  // Preferred Local Backup Path / Directory
+  static getPreferredBackupPath(): string {
+    try {
+      return localStorage.getItem('srk_preferred_backup_path') || 'C:\\SRK_ERP_Backups\\';
+    } catch {
+      return 'C:\\SRK_ERP_Backups\\';
+    }
+  }
+
+  static setPreferredBackupPath(path: string): void {
+    try {
+      localStorage.setItem('srk_preferred_backup_path', path.trim());
+    } catch {}
+  }
+
+  // Record Backup Audit Logs (Local, Google Drive, OneDrive)
+  static recordBackupLog(log: {
+    destination: 'local' | 'google_drive' | 'onedrive';
+    fileName: string;
+    customPath?: string;
+  }): void {
+    try {
+      const raw = localStorage.getItem('srk_backup_logs');
+      const logs = raw ? JSON.parse(raw) : [];
+      const entry = {
+        id: `bk_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        timestamp: new Date().toISOString(),
+        formattedDate: new Date().toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          dateStyle: 'medium',
+          timeStyle: 'medium',
+        }),
+        destination: log.destination,
+        fileName: log.fileName,
+        customPath: log.customPath || '',
+      };
+      logs.unshift(entry);
+      localStorage.setItem('srk_backup_logs', JSON.stringify(logs.slice(0, 50)));
+    } catch {}
+  }
+
+  static getBackupLogs(): Array<{
+    id: string;
+    timestamp: string;
+    formattedDate: string;
+    destination: 'local' | 'google_drive' | 'onedrive';
+    fileName: string;
+    customPath?: string;
+  }> {
+    try {
+      const raw = localStorage.getItem('srk_backup_logs');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
     }
   }
 

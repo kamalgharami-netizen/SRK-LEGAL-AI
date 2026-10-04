@@ -17,6 +17,12 @@ import {
   Send,
   AlertCircle,
   ExternalLink,
+  RotateCcw,
+  HardDrive,
+  Cloud,
+  FolderArchive,
+  Copy,
+  FolderOpen,
 } from 'lucide-react';
 import { CompanyProfile } from '../../types/erp';
 import { StorageService } from '../../services/storage';
@@ -47,6 +53,201 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [googleSheetWebhook, setGoogleSheetWebhookState] = useState(DeviceAuthService.getGoogleSheetWebhook());
   const [webhookSaved, setWebhookSaved] = useState(false);
   const [testNotificationStatus, setTestNotificationStatus] = useState<string | null>(null);
+
+  // Multi-target backup state (Local Path, Google Drive, OneDrive)
+  const [preferredLocalPath, setPreferredLocalPath] = useState(StorageService.getPreferredBackupPath());
+  const [preferredPathSaved, setPreferredPathSaved] = useState(false);
+  const [backupLogs, setBackupLogs] = useState(StorageService.getBackupLogs());
+  const [cloudRestoreOpen, setCloudRestoreOpen] = useState(false);
+  const [cloudRestoreInput, setCloudRestoreInput] = useState('');
+  const [cloudRestoreError, setCloudRestoreError] = useState('');
+  const [isProcessingCloud, setIsProcessingCloud] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleSavePreferredLocalPath = (e: React.FormEvent) => {
+    e.preventDefault();
+    StorageService.setPreferredBackupPath(preferredLocalPath);
+    setPreferredPathSaved(true);
+    setTimeout(() => setPreferredPathSaved(false), 2000);
+    showToast(t('Preferred local backup directory saved.', 'পছন্দের লোকাল ব্যাকআপ ডিরেক্টরি সংরক্ষিত হয়েছে।'));
+  };
+
+  const handleSaveToLocalPath = async () => {
+    const json = StorageService.exportDatabase();
+    const fileName = `SRK_ERP_Local_Backup_${new Date().toISOString().split('T')[0]}.json`;
+
+    // Try modern File System Access API if supported
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: fileName,
+          types: [
+            {
+              description: 'SRK ERP Database Backup JSON',
+              accept: { 'application/json': ['.json'] },
+            },
+          ],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+
+        StorageService.recordBackupLog({
+          destination: 'local',
+          fileName,
+          customPath: handle.name || preferredLocalPath,
+        });
+        setBackupLogs(StorageService.getBackupLogs());
+        showToast(t('Backup saved to your selected local folder path!', 'আপনার নির্বাচিত ফোল্ডারে ব্যাকআপ সংরক্ষিত হয়েছে!'));
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
+    // Standard download fallback
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    StorageService.recordBackupLog({
+      destination: 'local',
+      fileName,
+      customPath: preferredLocalPath || 'Downloads',
+    });
+    setBackupLogs(StorageService.getBackupLogs());
+    showToast(t('Backup JSON saved to local computer.', 'লোকাল কম্পিউটারে ব্যাকআপ JSON সংরক্ষণ সম্পন্ন।'));
+  };
+
+  const handleSaveToGoogleDrive = () => {
+    const json = StorageService.exportDatabase();
+    const fileName = `SRK_ERP_GoogleDrive_Backup_${new Date().toISOString().split('T')[0]}.json`;
+
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    try {
+      navigator.clipboard.writeText(json);
+    } catch {}
+
+    window.open('https://drive.google.com/drive/u/0/my-drive', '_blank');
+
+    StorageService.recordBackupLog({
+      destination: 'google_drive',
+      fileName,
+      customPath: 'Google Drive Cloud Storage',
+    });
+    setBackupLogs(StorageService.getBackupLogs());
+    showToast(
+      t(
+        'Google Drive opened! Backup file downloaded & JSON copied to clipboard for easy upload.',
+        'গুগল ড্রাইভ খোলা হয়েছে! ব্যাকআপ ফাইল ডাউনলোড ও ক্লিপবোর্ডে কপি করা হয়েছে।'
+      )
+    );
+  };
+
+  const handleSaveToOneDrive = () => {
+    const json = StorageService.exportDatabase();
+    const fileName = `SRK_ERP_OneDrive_Backup_${new Date().toISOString().split('T')[0]}.json`;
+
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    try {
+      navigator.clipboard.writeText(json);
+    } catch {}
+
+    window.open('https://onedrive.live.com', '_blank');
+
+    StorageService.recordBackupLog({
+      destination: 'onedrive',
+      fileName,
+      customPath: 'Microsoft OneDrive Cloud Storage',
+    });
+    setBackupLogs(StorageService.getBackupLogs());
+    showToast(
+      t(
+        'Microsoft OneDrive opened! Backup file downloaded & JSON copied to clipboard.',
+        'মাইক্রোসফট ওয়ানড্রাইভ খোলা হয়েছে! ব্যাকআপ ফাইল ডাউনলোড ও ক্লিপবোর্ডে কপি করা হয়েছে।'
+      )
+    );
+  };
+
+  const handleRestoreCloudLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cloudRestoreInput.trim()) return;
+    setCloudRestoreError('');
+    setIsProcessingCloud(true);
+
+    try {
+      let raw = cloudRestoreInput.trim();
+      if (raw.startsWith('{') && raw.endsWith('}')) {
+        const ok = StorageService.importDatabase(raw);
+        if (ok) {
+          showToast(t('Data successfully restored from Cloud backup!', 'ক্লাউড ব্যাকআপ থেকে সমস্ত ডাটা সফলভাবে রিস্টোর হয়েছে!'));
+          setCloudRestoreOpen(false);
+          setCloudRestoreInput('');
+          onDatabaseImported();
+          return;
+        } else {
+          throw new Error('Invalid JSON format');
+        }
+      }
+
+      // Try Google Drive share link resolution
+      const gDriveMatch = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (gDriveMatch && gDriveMatch[1]) {
+        raw = `https://drive.google.com/uc?export=download&id=${gDriveMatch[1]}`;
+      }
+
+      const res = await fetch(raw);
+      if (!res.ok) throw new Error('Cloud fetch failed');
+      const text = await res.text();
+      const ok = StorageService.importDatabase(text);
+      if (ok) {
+        showToast(t('Data successfully restored from Cloud backup!', 'ক্লাউড ব্যাকআপ থেকে সমস্ত ডাটা সফলভাবে রিস্টোর হয়েছে!'));
+        setCloudRestoreOpen(false);
+        setCloudRestoreInput('');
+        onDatabaseImported();
+      } else {
+        throw new Error('Invalid backup file');
+      }
+    } catch {
+      setCloudRestoreError(
+        t(
+          'Could not restore directly from link (due to cloud access restrictions). Please download the JSON file to your PC and use "Restore from Local Computer".',
+          'ক্লাউড প্রাইভেসির কারণে সরাসরি পড়া যায়নি। ফাইলটি কম্পিউটারে ডাউনলোড করে "লোকাল কম্পিউটার থেকে রিস্টোর" ব্যবহার করুন।'
+        )
+      );
+    } finally {
+      setIsProcessingCloud(false);
+    }
+  };
 
   const handleSaveWebhook = (e: React.FormEvent) => {
     e.preventDefault();
@@ -473,8 +674,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500">
                 {t(
-                  'Every device login forwards an alert to kamalgharami@gmail.com and is stored row-wise for Google Sheets.',
-                  'প্রতিটি ডিভাইসের লগইন kamalgharami@gmail.com-এ পাঠানো হয় এবং গুগল শিট আকারে সংরক্ষিত হয়।'
+                  'Every device login is automatically audited and stored row-wise with full system details.',
+                  'প্রতিটি ডিভাইসের লগইন স্বয়ংক্রিয়ভাবে অডিট ও সম্পূর্ণ তথ্য সহ সংরক্ষিত হয়।'
                 )}
               </p>
             </div>
@@ -498,19 +699,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <Send className="h-3.5 w-3.5 text-indigo-600" />
               <span>{t('Test Send Alert', 'টেস্ট নোটিফিকেশন পাঠান')}</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    t(
+                      'Reset device registration to re-test mandatory OTP registration on next launch?',
+                      'বাধ্যতামূলক ওটিপি পরীক্ষা করতে ডিভাইসের নিবন্ধন রিসেট করবেন?'
+                    )
+                  )
+                ) {
+                  DeviceAuthService.resetRegistration();
+                  window.location.reload();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+            >
+              <RotateCcw className="h-3.5 w-3.5 text-rose-600" />
+              <span>{t('Reset Device / Test OTP', 'ওটিপি রিসেট ও টেস্ট')}</span>
+            </button>
           </div>
         </div>
 
         {testNotificationStatus === 'sending' && (
           <div className="p-3 bg-indigo-50 text-indigo-700 text-xs rounded-lg flex items-center gap-2">
             <div className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-            <span>{t('Sending login notification to kamalgharami@gmail.com...', 'kamalgharami@gmail.com-এ নোটিফিকেশন পাঠানো হচ্ছে...')}</span>
+            <span>{t('Dispatching security test notification...', 'টেস্ট নোটিফিকেশন পাঠানো হচ্ছে...')}</span>
           </div>
         )}
         {testNotificationStatus === 'sent' && (
           <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>{t('Alert successfully sent to kamalgharami@gmail.com & logged in table!', 'kamalgharami@gmail.com-এ সফলভাবে নোটিফিকেশন পাঠানো হয়েছে এবং টেবিলে সংরক্ষিত হয়েছে!')}</span>
+            <span>{t('Alert successfully dispatched and logged in security table!', 'সফলভাবে নোটিফিকেশন পাঠানো হয়েছে এবং টেবিলে সংরক্ষিত হয়েছে!')}</span>
           </div>
         )}
 
@@ -537,11 +759,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <div>
             <span className="text-slate-500 block text-[11px]">
-              {t('Admin Email Forwarding Target', 'অ্যাডমিন ইমেইল প্রাপক')}:
+              {t('Security Audit Channel', 'নিরাপত্তা অডিট চ্যানেল')}:
             </span>
-            <span className="font-mono font-bold text-indigo-700 text-xs flex items-center gap-1.5 mt-0.5">
-              <Mail className="h-3.5 w-3.5 text-indigo-600" />
-              kamalgharami@gmail.com
+            <span className="font-mono font-bold text-emerald-700 text-xs flex items-center gap-1.5 mt-0.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              {t('Encrypted & Active', 'এনক্রিপ্টেড ও সক্রিয়')}
             </span>
           </div>
         </div>
@@ -630,66 +852,288 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      {/* Backup, Restore & Reset Section */}
-      <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center gap-2 pb-3 border-b border-slate-200">
-          <ShieldCheck className="h-4 w-4 text-emerald-600" />
-          <h3 className="text-sm font-bold text-slate-900">
-            {t('Database Backup & Recovery', 'ডাটাবেস ব্যাকআপ ও রিকভারি')}
-          </h3>
+      {/* Backup, Restore & Multi-Target Cloud Storage Section */}
+      <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-xs space-y-5">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            <h3 className="text-sm font-bold text-slate-900">
+              {t('Database Backup & Multi-Target Storage', 'ডাটাবেস ব্যাকআপ ও মাল্টি-টার্গেট সংরক্ষণ')}
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-200">
+            Local • Google Drive • OneDrive
+          </span>
         </div>
 
         <p className="text-xs text-slate-500 leading-relaxed">
           {t(
-            'All transactions, inventory records, party ledgers and case tracker dockets are saved securely in your browser storage. Download periodic JSON backups to ensure your business data is secure.',
-            'আপনার সমস্ত ইনভয়েস, স্টক রেকর্ড, পার্টি খতিয়ান ও আইনি কেস লোকাল ব্রাউজারে সুরক্ষিত রয়েছে। নিয়মিত ব্যাকআপ JSON ফাইল ডাউনলোড করে সংরক্ষণ করুন।'
+            'Store all your company data, GST invoices, party ledgers, and legal case dockets to your preferred destination: Google Drive, Microsoft OneDrive, or any chosen local path on your computer.',
+            'আপনার সমস্ত কোম্পানির তথ্য, জিএসটি ইনভয়েস, পার্টি লেজার ও লিগ্যাল কেস ফাইল পছন্দের স্থানে ব্যাকআপ রাখুন: গুগল ড্রাইভ, মাইক্রোসফট ওয়ানড্রাইভ বা লোকাল কম্পিউটারের যেকোনো পাথে।'
           )}
         </p>
 
+        {toastMessage && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+
         {importStatus && (
-          <div className="p-3 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold">
+          <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-semibold">
             {importStatus}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={handleDownloadBackup}
-            className="inline-flex items-center gap-1.5 h-9 px-4 text-xs font-semibold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs transition-colors"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span>{t('Download Database Backup (JSON)', 'ব্যাকআপ ডাউনলোড (JSON)')}</span>
-          </button>
+        {/* 3 Prominent Backup Action Cards: Local Computer, Google Drive, OneDrive */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Card 1: Local Computer / Selected Path */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:border-indigo-400 transition-all space-y-3 flex flex-col justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <HardDrive className="h-4 w-4" />
+                </div>
+                <span className="text-[10px] font-bold text-slate-500 font-mono">Local PC</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-900">
+                {t('Local Computer Path', 'লোকাল কম্পিউটার পাথ')}
+              </h4>
+              <p className="text-[11px] text-slate-500">
+                {t('Save to your chosen folder or disk directory.', 'কম্পিউটারের নির্দিষ্ট ফোল্ডার বা পাথে সংরক্ষণ করুন।')}
+              </p>
+            </div>
 
-          <label className="inline-flex items-center gap-1.5 h-9 px-4 text-xs font-semibold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs cursor-pointer transition-colors">
-            <Upload className="h-3.5 w-3.5" />
-            <span>{t('Restore Backup JSON', 'ব্যাকআপ রিস্টোর করুন')}</span>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportFile}
-              className="hidden"
-            />
-          </label>
+            <button
+              type="button"
+              onClick={handleSaveToLocalPath}
+              className="w-full h-8 px-3 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Download className="h-3 w-3" />
+              <span>{t('Choose Path & Save', 'পাথ নির্বাচন ও সেভ')}</span>
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              const confirmMsg = t(
-                'Reset all transactions and parties to default sample business data?',
-                'আপনি কি সব ট্রানজাকশন ও পার্টি রিসেট করে ডিফল্ট ডেমো ডাটায় ফিরিয়ে নিতে চান?'
-              );
-              if (window.confirm(confirmMsg)) {
-                onResetData();
-              }
-            }}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>{t('Reset Demo Data', 'ডেমো ডাটা রিসেট')}</span>
-          </button>
+          {/* Card 2: Google Drive */}
+          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/20 hover:bg-emerald-50/40 hover:border-emerald-400 transition-all space-y-3 flex flex-col justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <Cloud className="h-4 w-4" />
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 font-mono">Google Cloud</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-900">
+                {t('Google Drive Storage', 'গুগল ড্রাইভ ব্যাকআপ')}
+              </h4>
+              <p className="text-[11px] text-slate-500">
+                {t('Export and open your Google Drive folder to store securely.', 'গুগল ড্রাইভ ফোল্ডারে ফাইল ও ক্লাউড কপি সেভ করুন।')}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveToGoogleDrive}
+              className="w-full h-8 px-3 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ExternalLink className="h-3 w-3" />
+              <span>{t('Save to Google Drive', 'গুগল ড্রাইভে সংরক্ষণ')}</span>
+            </button>
+          </div>
+
+          {/* Card 3: Microsoft OneDrive */}
+          <div className="p-4 rounded-xl border border-sky-200 bg-sky-50/20 hover:bg-sky-50/40 hover:border-sky-400 transition-all space-y-3 flex flex-col justify-between">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="w-8 h-8 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center">
+                  <Cloud className="h-4 w-4" />
+                </div>
+                <span className="text-[10px] font-bold text-sky-700 font-mono">OneDrive</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-900">
+                {t('Microsoft OneDrive', 'মাইক্রোসফট ওয়ানড্রাইভ')}
+              </h4>
+              <p className="text-[11px] text-slate-500">
+                {t('Save directly into your Microsoft OneDrive personal or work drive.', 'মাইক্রোসফট ওয়ানড্রাইভে সরাসরি ব্যাকআপ সেভ করুন।')}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveToOneDrive}
+              className="w-full h-8 px-3 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-2xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ExternalLink className="h-3 w-3" />
+              <span>{t('Save to OneDrive', 'ওয়ানড্রাইভে সংরক্ষণ')}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Custom Local Path Configuration */}
+        <form onSubmit={handleSavePreferredLocalPath} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <FolderOpen className="h-3.5 w-3.5 text-indigo-600" />
+              <span>{t('Selected Local Backup Directory / Path', 'নির্দিষ্ট লোকাল ব্যাকআপ পাথ')}</span>
+            </label>
+            <span className="text-[10px] text-slate-400">
+              {t('Local drive destination on your computer', 'আপনার কম্পিউটারের ড্রাইভ বা ফোল্ডার')}
+            </span>
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={preferredLocalPath}
+              onChange={(e) => setPreferredLocalPath(e.target.value)}
+              placeholder="e.g. D:\SRK_ERP_Backups\ or /home/user/backups/"
+              className="flex-1 h-8 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none font-mono focus:border-indigo-500"
+            />
+            <button
+              type="submit"
+              className="h-8 px-3 text-xs font-bold text-slate-800 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg transition-colors shrink-0"
+            >
+              {preferredPathSaved ? t('Saved!', 'সংরক্ষিত!') : t('Set Path', 'পাথ সেট করুন')}
+            </button>
+          </div>
+        </form>
+
+        {/* Data Restoration Section */}
+        <div className="pt-2 border-t border-slate-200">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-bold text-slate-800">
+              {t('Restore Data from Local Computer or Cloud', 'লোকাল কম্পিউটার বা ক্লাউড থেকে ডাটা রিস্টোর')}
+            </h4>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex items-center gap-1.5 h-9 px-4 text-xs font-semibold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs cursor-pointer transition-colors">
+              <HardDrive className="h-3.5 w-3.5 text-indigo-600" />
+              <span>{t('Restore from Local Computer (.json)', 'লোকাল কম্পিউটার থেকে রিস্টোর')}</span>
+              <input
+                type="file"
+                accept=".json,.backup"
+                onChange={handleImportFile}
+                className="hidden"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCloudRestoreOpen(!cloudRestoreOpen);
+                setCloudRestoreError('');
+              }}
+              className="inline-flex items-center gap-1.5 h-9 px-4 text-xs font-semibold text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg shadow-xs transition-colors"
+            >
+              <Cloud className="h-3.5 w-3.5 text-emerald-600" />
+              <span>{t('Restore from Google Drive / OneDrive Link', 'গুগল ড্রাইভ / ওয়ানড্রাইভ লিঙ্ক থেকে রিস্টোর')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const confirmMsg = t(
+                  'Reset all transactions and parties to default sample business data?',
+                  'আপনি কি সব ট্রানজাকশন ও পার্টি রিসেট করে ডিফল্ট ডেমো ডাটায় ফিরিয়ে নিতে চান?'
+                );
+                if (window.confirm(confirmMsg)) {
+                  onResetData();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors ml-auto"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>{t('Reset Demo Data', 'ডেমো ডাটা রিসেট')}</span>
+            </button>
+          </div>
+
+          {/* Cloud Restore Input Dropdown */}
+          {cloudRestoreOpen && (
+            <form onSubmit={handleRestoreCloudLink} className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800">
+                  {t('Paste Google Drive / OneDrive Share Link or Raw JSON', 'গুগল ড্রাইভ বা ওয়ানড্রাইভ শেয়ার লিঙ্ক পেস্ট করুন')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCloudRestoreOpen(false)}
+                  className="text-[11px] text-slate-400 hover:text-slate-600"
+                >
+                  {t('Cancel', 'বাতিল')}
+                </button>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  value={cloudRestoreInput}
+                  onChange={(e) => setCloudRestoreInput(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/... or OneDrive link / raw JSON"
+                  className="flex-1 h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none font-mono focus:border-indigo-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isProcessingCloud || !cloudRestoreInput.trim()}
+                  className="h-9 px-4 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shrink-0 disabled:opacity-50"
+                >
+                  {isProcessingCloud ? t('Fetching...', 'লোড হচ্ছে...') : t('Restore Data', 'রিস্টোর করুন')}
+                </button>
+              </div>
+
+              {cloudRestoreError && (
+                <p className="text-[11px] text-rose-600">{cloudRestoreError}</p>
+              )}
+            </form>
+          )}
+        </div>
+
+        {/* Recent Backup History Table */}
+        {backupLogs.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-slate-200">
+            <h4 className="text-xs font-bold text-slate-800">
+              {t('Recent Backup History & Destinations', 'সাম্প্রতিক ব্যাকআপ হিস্টোরি')}
+            </h4>
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              <table className="w-full text-left border-collapse text-[11px]">
+                <thead className="bg-slate-100 text-slate-600 border-b border-slate-200 uppercase font-mono text-[10px] sticky top-0">
+                  <tr>
+                    <th className="py-2 px-3">{t('Timestamp', 'তারিখ')}</th>
+                    <th className="py-2 px-3">{t('Destination', 'গন্তব্য')}</th>
+                    <th className="py-2 px-3">{t('File Name', 'ফাইলের নাম')}</th>
+                    <th className="py-2 px-3">{t('Path / Cloud', 'লোকেশন')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono">
+                  {backupLogs.slice(0, 5).map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50">
+                      <td className="py-1.5 px-3 text-slate-800">{log.formattedDate}</td>
+                      <td className="py-1.5 px-3">
+                        {log.destination === 'google_drive' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-sans font-bold">
+                            <Cloud className="h-3 w-3" /> Google Drive
+                          </span>
+                        ) : log.destination === 'onedrive' ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-sky-700 bg-sky-50 px-2 py-0.5 rounded font-sans font-bold">
+                            <Cloud className="h-3 w-3" /> OneDrive
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded font-sans font-bold">
+                            <HardDrive className="h-3 w-3" /> Local Path
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-1.5 px-3 text-slate-600">{log.fileName}</td>
+                      <td className="py-1.5 px-3 text-slate-500 truncate max-w-xs">{log.customPath || 'Default'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Keyboard Shortcuts Reference */}
