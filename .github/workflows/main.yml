@@ -70,10 +70,10 @@ jobs:
       - name: Configure Electron Builder
         shell: pwsh
         run: |
-          node -e "const fs=require('fs'); const p=require('./package.json'); p.main='electron-main.cjs'; p.build={appId:'com.srklegal.ai',productName:'SRK Legal AI',directories:{output:'release'},files:['dist/**/*','electron-main.cjs','package.json'],win:{target:'nsis'},nsis:{oneClick:false,allowToChangeInstallationDirectory:true,createDesktopShortcut:true,createStartMenuShortcut:true}}; fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
+          node -e "const fs=require('fs'); const p=require('./package.json'); p.main='electron-main.cjs'; p.build={appId:'com.srklegal.ai',productName:'SRK Legal AI',directories:{output:'release'},files:['dist/**/*','electron-main.cjs','package.json'],win:{target:'nsis'},nsis:{oneClick:false,allowToChangeInstallationDirectory:true,createDesktopShortcut:true,createStartMenuShortcut:true},publish:null}; fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
 
       - name: Build Windows Installer
-        run: npx electron-builder --win nsis
+        run: npx electron-builder --win nsis --publish never
 
       - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
