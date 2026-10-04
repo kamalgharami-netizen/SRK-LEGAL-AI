@@ -11,10 +11,17 @@ import {
   ShieldCheck,
   Globe,
   CheckCircle2,
+  Smartphone,
+  Mail,
+  FileSpreadsheet,
+  Send,
+  AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { CompanyProfile } from '../../types/erp';
 import { StorageService } from '../../services/storage';
 import { useLanguage } from '../../context/LanguageContext';
+import { DeviceAuthService, DeviceLoginRecord } from '../../services/deviceAuthService';
 
 interface SettingsViewProps {
   company: CompanyProfile;
@@ -33,6 +40,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [form, setForm] = useState<CompanyProfile>(company);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  // Device Registration & Google Sheets state
+  const [registeredUser, setRegisteredUser] = useState(DeviceAuthService.getRegisteredUser());
+  const [loginLogs, setLoginLogs] = useState<DeviceLoginRecord[]>(DeviceAuthService.getLoginHistory());
+  const [googleSheetWebhook, setGoogleSheetWebhookState] = useState(DeviceAuthService.getGoogleSheetWebhook());
+  const [webhookSaved, setWebhookSaved] = useState(false);
+  const [testNotificationStatus, setTestNotificationStatus] = useState<string | null>(null);
+
+  const handleSaveWebhook = (e: React.FormEvent) => {
+    e.preventDefault();
+    DeviceAuthService.setGoogleSheetWebhook(googleSheetWebhook);
+    setWebhookSaved(true);
+    setTimeout(() => setWebhookSaved(false), 2000);
+  };
+
+  const handleTestAlert = async () => {
+    setTestNotificationStatus('sending');
+    const record = await DeviceAuthService.recordLoginSession();
+    if (record) {
+      setLoginLogs(DeviceAuthService.getLoginHistory());
+      setTestNotificationStatus('sent');
+      setTimeout(() => setTestNotificationStatus(null), 3000);
+    } else {
+      setTestNotificationStatus('error');
+    }
+  };
+
+  const handleExportLoginRows = () => {
+    DeviceAuthService.exportLoginsToCsv();
+  };
 
   const handleChange = (field: keyof CompanyProfile, val: any) => {
     setForm((prev) => ({ ...prev, [field]: val }));
@@ -421,6 +458,177 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
       </form>
+
+      {/* Device Registration & Google Sheets Login Notification Section */}
+      <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+          <div className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5 text-indigo-600" />
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                {t(
+                  'Device Registration & Login Security Audit',
+                  'ডিভাইস নিবন্ধন ও লগইন নিরাপত্তা অডিট'
+                )}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {t(
+                  'Every device login forwards an alert to kamalgharami@gmail.com and is stored row-wise for Google Sheets.',
+                  'প্রতিটি ডিভাইসের লগইন kamalgharami@gmail.com-এ পাঠানো হয় এবং গুগল শিট আকারে সংরক্ষিত হয়।'
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportLoginRows}
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+              <span>{t('Export to Google Sheet (CSV)', 'গুগল শিটে এক্সপোর্ট (CSV)')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleTestAlert}
+              className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors"
+            >
+              <Send className="h-3.5 w-3.5 text-indigo-600" />
+              <span>{t('Test Send Alert', 'টেস্ট নোটিফিকেশন পাঠান')}</span>
+            </button>
+          </div>
+        </div>
+
+        {testNotificationStatus === 'sending' && (
+          <div className="p-3 bg-indigo-50 text-indigo-700 text-xs rounded-lg flex items-center gap-2">
+            <div className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <span>{t('Sending login notification to kamalgharami@gmail.com...', 'kamalgharami@gmail.com-এ নোটিফিকেশন পাঠানো হচ্ছে...')}</span>
+          </div>
+        )}
+        {testNotificationStatus === 'sent' && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>{t('Alert successfully sent to kamalgharami@gmail.com & logged in table!', 'kamalgharami@gmail.com-এ সফলভাবে নোটিফিকেশন পাঠানো হয়েছে এবং টেবিলে সংরক্ষিত হয়েছে!')}</span>
+          </div>
+        )}
+
+        {/* Current Device Registration Details */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+          <div>
+            <span className="text-slate-500 block text-[11px]">
+              {t('Registered Mobile Number', 'নিবন্ধিত মোবাইল নম্বর')}:
+            </span>
+            <span className="font-mono font-bold text-slate-900 text-sm flex items-center gap-1.5 mt-0.5">
+              <Smartphone className="h-4 w-4 text-indigo-600" />
+              {registeredUser?.mobile || t('Not Registered Yet', 'এখনও নিবন্ধিত হয়নি')}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-slate-500 block text-[11px]">
+              {t('Registered User / Chamber', 'ব্যবহারকারী বা চেম্বার')}:
+            </span>
+            <span className="font-semibold text-slate-800 mt-0.5 block">
+              {registeredUser?.name || 'Advocate / Business Office'}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-slate-500 block text-[11px]">
+              {t('Admin Email Forwarding Target', 'অ্যাডমিন ইমেইল প্রাপক')}:
+            </span>
+            <span className="font-mono font-bold text-indigo-700 text-xs flex items-center gap-1.5 mt-0.5">
+              <Mail className="h-3.5 w-3.5 text-indigo-600" />
+              kamalgharami@gmail.com
+            </span>
+          </div>
+        </div>
+
+        {/* Google Sheets Webhook Configuration */}
+        <form onSubmit={handleSaveWebhook} className="space-y-2">
+          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+            <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+            <span>{t('Google Sheets Sync Webhook URL (Optional Auto-Sync)', 'গুগল শিট অটো-সিঙ্ক ওয়েবহুক লিঙ্ক (ঐচ্ছিক)')}</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="url"
+              placeholder="https://script.google.com/macros/s/.../exec or SheetDB API URL"
+              value={googleSheetWebhook}
+              onChange={(e) => setGoogleSheetWebhookState(e.target.value)}
+              className="flex-1 h-9 px-3 text-xs bg-white border border-slate-300 rounded-lg outline-none font-mono focus:border-indigo-500"
+            />
+            <button
+              type="submit"
+              className="h-9 px-4 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-xs transition-colors shrink-0"
+            >
+              {webhookSaved ? t('Saved!', 'সংরক্ষিত!') : t('Save Webhook', 'লিঙ্ক সংরক্ষণ')}
+            </button>
+          </div>
+          <span className="text-[10px] text-slate-400 block">
+            {t(
+              'Paste your Google Apps Script Web App URL or SheetDB endpoint to auto-append rows to your live Google Sheet on every login.',
+              'আপনার গুগল অ্যাপ স্ক্রিপ্ট বা শীটডিবি লিঙ্ক দিলে প্রতিটি নতুন লগইনের রো সরাসরি আপনার গুগল শিটে যোগ হবে।'
+            )}
+          </span>
+        </form>
+
+        {/* Row-Wise Login Audit Table */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-slate-800">
+              {t('Row-Wise Login & Device Access History', 'প্রতিটি লগইনের রো-ভিত্তিক রেকর্ড')}
+            </h4>
+            <span className="text-[10px] font-mono text-slate-500">
+              {loginLogs.length} {t('records logged', 'টি লগইন সংরক্ষিত')}
+            </span>
+          </div>
+
+          <div className="border border-slate-200 rounded-xl overflow-hidden overflow-x-auto max-h-64">
+            <table className="w-full text-left border-collapse text-[11px]">
+              <thead className="bg-slate-100 text-slate-600 border-b border-slate-200 uppercase font-mono text-[10px] sticky top-0">
+                <tr>
+                  <th className="py-2 px-3">{t('Timestamp (IST)', 'তারিখ ও সময়')}</th>
+                  <th className="py-2 px-3">{t('Mobile Number', 'মোবাইল নম্বর')}</th>
+                  <th className="py-2 px-3">{t('User Name', 'নাম')}</th>
+                  <th className="py-2 px-3">{t('Device & OS', 'ডিভাইস ও ওএস')}</th>
+                  <th className="py-2 px-3">{t('Browser', 'ব্রাউজার')}</th>
+                  <th className="py-2 px-3">{t('IP & Location', 'আইপি ও লোকেশন')}</th>
+                  <th className="py-2 px-3 text-right">{t('Alert Destination', 'বিজ্ঞপ্তি')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-mono">
+                {loginLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-slate-400 font-sans">
+                      {t('No login history recorded yet.', 'এখনও কোনো লগইন হিস্টোরি তৈরি হয়নি।')}
+                    </td>
+                  </tr>
+                ) : (
+                  loginLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50">
+                      <td className="py-2 px-3 text-slate-800 font-semibold">{log.formattedDate}</td>
+                      <td className="py-2 px-3 text-indigo-700 font-bold">{log.mobile}</td>
+                      <td className="py-2 px-3 font-sans text-slate-700">{log.userName}</td>
+                      <td className="py-2 px-3 text-slate-600">{log.os} ({log.deviceType})</td>
+                      <td className="py-2 px-3 text-slate-500">{log.browser}</td>
+                      <td className="py-2 px-3 text-slate-600">{log.ip} • {log.location}</td>
+                      <td className="py-2 px-3 text-right">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-sans font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <CheckCircle2 className="h-3 w-3" />
+                          kamalgharami@gmail.com
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       {/* Backup, Restore & Reset Section */}
       <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-xs space-y-4">

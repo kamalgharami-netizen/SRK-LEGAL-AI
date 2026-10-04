@@ -297,12 +297,39 @@ export const CasePrintModal: React.FC<CasePrintModalProps> = ({
                       <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-bold">
                         Current Status
                       </span>
-                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 text-slate-800">
-                        {selectedCase.status.replace('_', ' ')}
+                      <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-900 text-white">
+                        {selectedCase.status === 'case_registered'
+                          ? '1) CASE REGISTERED'
+                          : selectedCase.status === 'hearing'
+                          ? '2) HEARING'
+                          : selectedCase.status === 'under_inquiry'
+                          ? '3) UNDER INQUIRY'
+                          : selectedCase.status === 'hearing_completed'
+                          ? '4) HEARING COMPLETED'
+                          : selectedCase.status === 'disposed'
+                          ? '5) DISPOSED'
+                          : selectedCase.status === 'rejected'
+                          ? '6) REJECTED'
+                          : selectedCase.status.replace('_', ' ')}
                       </span>
-                      {selectedCase.nextHearingDate && (
+                      {selectedCase.status === 'hearing' && selectedCase.nextHearingDate && (
                         <span className="block font-mono text-amber-800 font-bold mt-1 text-[11px]">
-                          Next Date: {selectedCase.nextHearingDate}
+                          Hearing Date: {selectedCase.nextHearingDate}
+                        </span>
+                      )}
+                      {selectedCase.status === 'under_inquiry' && selectedCase.riInquiryDate && (
+                        <span className="block font-mono text-purple-800 font-bold mt-1 text-[11px]">
+                          RI Inquiry Date: {selectedCase.riInquiryDate}
+                        </span>
+                      )}
+                      {selectedCase.status === 'disposed' && selectedCase.khatianNo && (
+                        <span className="block font-mono text-emerald-800 font-bold mt-1 text-[11px]">
+                          Khatian No: {selectedCase.khatianNo}
+                        </span>
+                      )}
+                      {selectedCase.status === 'rejected' && selectedCase.rejectionReason && (
+                        <span className="block text-rose-800 font-medium mt-1 text-[10px] max-w-xs">
+                          Reason: {selectedCase.rejectionReason}
                         </span>
                       )}
                     </div>

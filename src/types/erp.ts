@@ -172,11 +172,16 @@ export interface StockAdjustment {
 export type CaseType = 'mutation' | 'misc_case' | 'rti' | 'lr_appeal';
 
 export type CaseStatus =
+  | 'case_registered'
+  | 'hearing'
+  | 'under_inquiry'
+  | 'hearing_completed'
+  | 'disposed'
+  | 'rejected'
+  | 'hearing_scheduled'
   | 'filed'
   | 'scrutiny'
-  | 'hearing_scheduled'
   | 'order_reserved'
-  | 'disposed'
   | 'dismissed'
   | 'appealed';
 
@@ -208,14 +213,21 @@ export interface LegalCase {
   brokerName?: string;
   brokerPhone?: string;
 
-  // Mutation & General Application:
-  applicationNo?: string; // Banglarbhumi / Portal Application No.
+  // Mutation & General Application (WB BL&LRO auto-code):
+  districtId?: string;
+  districtName?: string;
+  blockName?: string;
+  bllroCode?: string; // e.g. "1603"
+  applicationYear?: string; // e.g. "2026"
+  applicationNo?: string; // e.g. MUTE/2026/1603/00142
   mutationType?: string; // e.g. 'Sale Deed Purchase', 'Warishan / Succession', 'Gift Deed', 'Hebanama'
   roName?: string; // Revenue Officer (R.O.)
   riName?: string; // Revenue Inspector (R.I.) / Gram Panchayat Block
+  riInquiryDate?: string; // Date of inquiry given by RI (when Under Inquiry)
+  rejectionReason?: string; // Reason of rejection (when Rejected)
   deedNo?: string; // Registered Deed No.
   deedYear?: string; // Deed Year (e.g. 2025, 2024)
-  landArea?: string; // e.g. 0.06 Acre / 4 Decimal / 2 Cottah
+  landArea?: string; // e.g. 0.08 Acre / 5.5 Decimal / 2 Cottah
   landClassification?: string; // e.g. Bastu, Sali, Danga
 
   // Misc Case specific:

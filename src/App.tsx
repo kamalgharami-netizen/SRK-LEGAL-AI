@@ -31,6 +31,8 @@ import { QuickPaymentModal } from './components/common/QuickPaymentModal';
 import { CaseTrackerView } from './components/cases/CaseTrackerView';
 import { DailyTasksDrawer } from './components/cases/DailyTasksDrawer';
 import { WorkDashboardView } from './components/dashboard/WorkDashboardView';
+import { DeviceRegistrationModal } from './components/auth/DeviceRegistrationModal';
+import { DeviceAuthService } from './services/deviceAuthService';
 
 export default function App() {
   // Navigation, mode & global search
@@ -64,6 +66,14 @@ export default function App() {
   const [paymentModalInvoice, setPaymentModalInvoice] = useState<Transaction | undefined>();
 
   const [isDailyTasksDrawerOpen, setIsDailyTasksDrawerOpen] = useState(false);
+  const [isDeviceRegistrationOpen, setIsDeviceRegistrationOpen] = useState(!DeviceAuthService.isRegistered());
+
+  // Record session login audit on app start if device already registered
+  useEffect(() => {
+    if (DeviceAuthService.isRegistered()) {
+      DeviceAuthService.recordLoginSession();
+    }
+  }, []);
 
   // Synchronize state reload from storage
   const reloadData = () => {
@@ -699,6 +709,14 @@ export default function App() {
           setIsDailyTasksDrawerOpen(false);
           setActiveTab('cases');
           setCaseSubTab(c.type);
+        }}
+      />
+
+      {/* First-Time Mobile Number Registration & Login Alert Modal */}
+      <DeviceRegistrationModal
+        isOpen={isDeviceRegistrationOpen}
+        onRegistered={() => {
+          setIsDeviceRegistrationOpen(false);
         }}
       />
     </div>

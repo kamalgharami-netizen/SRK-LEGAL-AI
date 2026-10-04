@@ -31,6 +31,7 @@ import { LegalCase, CaseType, CaseStatus, Party, HearingLog, CompanyProfile } fr
 import { CasePrintModal } from './CasePrintModal';
 import { NotificationService } from '../../services/notificationService';
 import { useLanguage } from '../../context/LanguageContext';
+import { WB_BLLRO_DISTRICTS, generateMutationAppNo } from '../../data/bllroOffices';
 
 interface CaseTrackerViewProps {
   cases: LegalCase[];
@@ -96,7 +97,17 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
   const [formNextHearingDate, setFormNextHearingDate] = useState(
     new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
   );
-  const [formStatus, setFormStatus] = useState<CaseStatus>('hearing_scheduled');
+  const [formStatus, setFormStatus] = useState<CaseStatus>('case_registered');
+
+  // West Bengal BL&LRO District & Block selection & auto-code
+  const [formDistrictId, setFormDistrictId] = useState<string>('s24p');
+  const [formBlockCode, setFormBlockCode] = useState<string>('1603');
+  const [formApplicationYear, setFormApplicationYear] = useState<string>(new Date().getFullYear().toString());
+  const [formApplicationSerial, setFormApplicationSerial] = useState<string>('0842');
+
+  // Conditional status specific fields
+  const [formRiInquiryDate, setFormRiInquiryDate] = useState<string>('');
+  const [formRejectionReason, setFormRejectionReason] = useState<string>('');
 
   // Intermediary / Broker & Contact
   const [formBrokerName, setFormBrokerName] = useState('');
@@ -245,17 +256,62 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
     return diff >= 0 && diff <= 3;
   });
 
+  const handleDistrictChange = (distId: string) => {
+    setFormDistrictId(distId);
+    const dist = WB_BLLRO_DISTRICTS.find((d) => d.id === distId);
+    if (dist && dist.blocks.length > 0) {
+      const firstBlock = dist.blocks[0];
+      setFormBlockCode(firstBlock.code);
+      const newAppNo = generateMutationAppNo(formApplicationYear, firstBlock.code, formApplicationSerial);
+      setFormApplicationNo(newAppNo);
+      setFormCourt(firstBlock.officeName);
+    }
+  };
+
+  const handleBlockChange = (blkCode: string) => {
+    setFormBlockCode(blkCode);
+    const dist = WB_BLLRO_DISTRICTS.find((d) => d.id === formDistrictId);
+    const blk = dist?.blocks.find((b) => b.code === blkCode);
+    const newAppNo = generateMutationAppNo(formApplicationYear, blkCode, formApplicationSerial);
+    setFormApplicationNo(newAppNo);
+    if (blk) {
+      setFormCourt(blk.officeName);
+    }
+  };
+
+  const handleYearChange = (year: string) => {
+    setFormApplicationYear(year);
+    setFormApplicationNo(generateMutationAppNo(year, formBlockCode, formApplicationSerial));
+  };
+
+  const handleSerialChange = (serial: string) => {
+    setFormApplicationSerial(serial);
+    setFormApplicationNo(generateMutationAppNo(formApplicationYear, formBlockCode, serial));
+  };
+
   const openNewCaseModal = (defaultType?: CaseType) => {
     const typeToSet = defaultType || (activeMenu === 'all' || activeMenu === 'cause_list' ? 'mutation' : activeMenu);
     setEditingCase(null);
+
+    const defaultDist = WB_BLLRO_DISTRICTS[0]; // South 24 Parganas
+    const defaultBlock = defaultDist.blocks[0]; // Baruipur (1603)
+    const curYear = new Date().getFullYear().toString();
+    const curSerial = String(Math.floor(1000 + Math.random() * 9000));
+    const mutationAppNo = generateMutationAppNo(curYear, defaultBlock.code, curSerial);
+
+    setFormDistrictId(defaultDist.id);
+    setFormBlockCode(defaultBlock.code);
+    setFormApplicationYear(curYear);
+    setFormApplicationSerial(curSerial);
+
     setFormCaseNo(
       typeToSet === 'mutation'
-        ? `MUT/2026/${Math.floor(1000 + Math.random() * 9000)}`
+        ? `MUT/${curYear}/${Math.floor(1000 + Math.random() * 9000)}`
         : typeToSet === 'misc_case'
-        ? `REV-MISC/2026/${Math.floor(100 + Math.random() * 900)}`
+        ? `REV-MISC/${curYear}/${Math.floor(100 + Math.random() * 900)}`
         : typeToSet === 'rti'
-        ? `RTI/2026/${Math.floor(1000 + Math.random() * 9000)}`
-        : `LRA/2026/${Math.floor(10 + Math.random() * 90)}`
+        ? `RTI/${curYear}/${Math.floor(1000 + Math.random() * 9000)}`
+        : `LRA/${curYear}/${Math.floor(10 + Math.random() * 90)}`
     );
     setFormType(typeToSet);
     setFormTitle(
@@ -271,7 +327,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
     setFormOppositeParty('');
     setFormCourt(
       typeToSet === 'mutation'
-        ? 'Office of the BL&LRO'
+        ? defaultBlock.officeName
         : typeToSet === 'misc_case'
         ? 'Court of the Sub-Divisional Officer (SDO)'
         : typeToSet === 'rti'
@@ -280,16 +336,16 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
     );
     setFormFilingDate(todayStr);
     setFormNextHearingDate(new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0]);
-    setFormStatus('hearing_scheduled');
+    setFormStatus('case_registered');
+    setFormRiInquiryDate('');
+    setFormRejectionReason('');
 
     // Broker & Intermediary
     setFormBrokerName('');
     setFormBrokerPhone('');
 
     // Mutation specific
-    setFormApplicationNo(
-      typeToSet === 'mutation' ? `2026/01/MUT/${Math.floor(1000 + Math.random() * 9000)}` : ''
-    );
+    setFormApplicationNo(typeToSet === 'mutation' ? mutationAppNo : '');
     setFormMutationType('Sale Deed Purchase');
     setFormRoName('Revenue Officer, BL&LRO Office');
     setFormRiName('Revenue Inspector RI Circle');
@@ -300,7 +356,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
 
     // Misc Case specific: Docket No instead of Application No, Date of Docket
     setFormDocketNo(
-      typeToSet === 'misc_case' ? `DKT/SDO/2026/${Math.floor(100 + Math.random() * 900)}` : ''
+      typeToSet === 'misc_case' ? `DKT/SDO/${curYear}/${Math.floor(100 + Math.random() * 900)}` : ''
     );
     setFormDocketDate(todayStr);
     setFormMiscNature('Demarcation & Boundary Injunction');
@@ -313,7 +369,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
 
     // LR Appeal
     setFormAppealMemoNo(
-      typeToSet === 'lr_appeal' ? `APL-MEMO/2026/${Math.floor(10 + Math.random() * 90)}` : ''
+      typeToSet === 'lr_appeal' ? `APL-MEMO/${curYear}/${Math.floor(10 + Math.random() * 90)}` : ''
     );
     setFormLowerCourtCaseNo('');
     setFormLowerCourtOrderDate('');
@@ -322,7 +378,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
     // RTI
     setFormRtiOfficerOrPio('State Public Information Officer (SPIO)');
     setFormRtiMemoNo(
-      typeToSet === 'rti' ? `MEMO/SPIO/2026/${Math.floor(100 + Math.random() * 900)}` : ''
+      typeToSet === 'rti' ? `MEMO/SPIO/${curYear}/${Math.floor(100 + Math.random() * 900)}` : ''
     );
     setFormRtiFeeMode('Indian Postal Order (IPO)');
     setFormRtiIpoNo('');
@@ -343,7 +399,12 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
     setFormCourt(c.courtOrAuthority);
     setFormFilingDate(c.filingDate);
     setFormNextHearingDate(c.nextHearingDate || '');
-    setFormStatus(c.status);
+    setFormStatus(c.status || 'case_registered');
+    setFormDistrictId(c.districtId || 's24p');
+    setFormBlockCode(c.bllroCode || '1603');
+    setFormApplicationYear(c.applicationYear || new Date().getFullYear().toString());
+    setFormRiInquiryDate(c.riInquiryDate || '');
+    setFormRejectionReason(c.rejectionReason || '');
 
     // Broker
     setFormBrokerName(c.brokerName || '');
@@ -405,18 +466,23 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
       oppositeParty: formOppositeParty.trim(),
       courtOrAuthority: formCourt.trim(),
       filingDate: formFilingDate,
-      nextHearingDate: formNextHearingDate || undefined,
+      nextHearingDate: formStatus === 'hearing' || formStatus === 'hearing_scheduled' ? formNextHearingDate || undefined : formNextHearingDate || undefined,
       status: formStatus,
 
       // Broker & Intermediary
       brokerName: formBrokerName.trim() || undefined,
       brokerPhone: formBrokerPhone.trim() || undefined,
 
-      // Mutation & General
+      // Mutation & General with auto BL&LRO District/Block
+      districtId: formType === 'mutation' ? formDistrictId : undefined,
+      bllroCode: formType === 'mutation' ? formBlockCode : undefined,
+      applicationYear: formType === 'mutation' ? formApplicationYear : undefined,
       applicationNo: formType === 'mutation' ? formApplicationNo.trim() || undefined : undefined,
       mutationType: formType === 'mutation' ? formMutationType : undefined,
       roName: formRoName.trim() || undefined,
       riName: formRiName.trim() || undefined,
+      riInquiryDate: formStatus === 'under_inquiry' ? formRiInquiryDate : (editingCase?.riInquiryDate || undefined),
+      rejectionReason: formStatus === 'rejected' ? formRejectionReason : (editingCase?.rejectionReason || undefined),
       deedNo: formDeedNo.trim() || undefined,
       deedYear: formDeedYear.trim() || undefined,
       landArea: formLandArea.trim() || undefined,
@@ -427,7 +493,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
       docketDate: formType === 'misc_case' ? formDocketDate : undefined,
       miscNature: formType === 'misc_case' ? formMiscNature : undefined,
 
-      // Land & Mouza
+      // Land & Mouza (Manual Khatian number if disposed or general)
       mouza: formMouza.trim() || undefined,
       jlNo: formJlNo.trim() || undefined,
       khatianNo: formKhatianNo.trim() || undefined,
@@ -915,16 +981,17 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg outline-none font-medium"
+              className="h-8 px-2 text-xs bg-white border border-slate-300 rounded-lg outline-none font-semibold text-slate-800"
             >
-              <option value="all">All Statuses</option>
-              <option value="hearing_scheduled">Hearing Scheduled</option>
-              <option value="filed">Filed / Under Process</option>
-              <option value="scrutiny">Under Scrutiny</option>
-              <option value="order_reserved">Order Reserved</option>
-              <option value="disposed">Disposed / Allowed</option>
-              <option value="dismissed">Dismissed</option>
-              <option value="appealed">Appealed</option>
+              <option value="all">{t('All Statuses', 'সকল অবস্থা')}</option>
+              <option value="case_registered">{t('1) Case Registered', '১) কেস রেজিস্টার্ড')}</option>
+              <option value="hearing">{t('2) Hearing', '২) শুনানি / হেয়ারিং')}</option>
+              <option value="under_inquiry">{t('3) Under Inquiry', '৩) আন্ডার ইনকোয়ারি')}</option>
+              <option value="hearing_completed">{t('4) Hearing Completed', '৪) শুনানি সম্পন্ন')}</option>
+              <option value="disposed">{t('5) Disposed', '৫) নিষ্পত্তি / ডিসপোজড')}</option>
+              <option value="rejected">{t('6) Rejected', '৬) খারিজ / রিজেক্টেড')}</option>
+              <option value="hearing_scheduled">{t('Hearing Scheduled', 'শুনানি নির্ধারিত')}</option>
+              <option value="order_reserved">{t('Order Reserved', 'অর্ডার রিজার্ভড')}</option>
             </select>
           </div>
         </div>
@@ -1259,23 +1326,86 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                         )}
                       </td>
 
-                      {/* Status */}
+                      {/* Status Badge with Conditional Details */}
                       <td className="py-3 px-3 text-center">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                            c.status === 'disposed'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : c.status === 'order_reserved'
-                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                              : c.status === 'hearing_scheduled'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : c.status === 'dismissed'
-                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}
-                        >
-                          {c.status.replace('_', ' ')}
-                        </span>
+                        {c.status === 'case_registered' && (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-50 text-blue-800 border border-blue-200">
+                            {t('1) Registered', '১) রেজিস্টার্ড')}
+                          </span>
+                        )}
+                        {c.status === 'hearing' && (
+                          <div>
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-50 text-amber-900 border border-amber-300">
+                              {t('2) Hearing', '২) শুনানি')}
+                            </span>
+                            {c.nextHearingDate && (
+                              <span className="block text-[9px] font-mono text-amber-800 font-semibold mt-0.5">
+                                {c.nextHearingDate}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {c.status === 'under_inquiry' && (
+                          <div>
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-50 text-purple-900 border border-purple-300">
+                              {t('3) Under Inquiry', '৩) তদন্তাধীন')}
+                            </span>
+                            {c.riName && (
+                              <span className="block text-[9px] text-purple-800 font-semibold truncate max-w-[120px] mx-auto mt-0.5" title={c.riName}>
+                                RI: {c.riName}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {c.status === 'hearing_completed' && (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-teal-50 text-teal-900 border border-teal-300">
+                            {t('4) Hearing Done', '৪) শুনানি সম্পন্ন')}
+                          </span>
+                        )}
+                        {c.status === 'disposed' && (
+                          <div>
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-50 text-emerald-900 border border-emerald-300">
+                              {t('5) Disposed', '৫) নিষ্পত্তি')}
+                            </span>
+                            {c.khatianNo && (
+                              <span className="block text-[9px] font-mono text-emerald-800 font-bold mt-0.5">
+                                Kh: {c.khatianNo}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {c.status === 'rejected' && (
+                          <div>
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-50 text-rose-900 border border-rose-300">
+                              {t('6) Rejected', '৬) খারিজ')}
+                            </span>
+                            {c.rejectionReason && (
+                              <span className="block text-[9px] text-rose-700 truncate max-w-[120px] mx-auto mt-0.5" title={c.rejectionReason}>
+                                {c.rejectionReason}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {c.status === 'hearing_scheduled' && (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-50 text-amber-800 border border-amber-200">
+                            Hearing
+                          </span>
+                        )}
+                        {c.status === 'order_reserved' && (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-50 text-purple-700 border border-purple-200">
+                            Order Reserved
+                          </span>
+                        )}
+                        {c.status === 'dismissed' && (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                            Dismissed
+                          </span>
+                        )}
+                        {c.status === 'filed' && (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-slate-100 text-slate-700">
+                            Filed
+                          </span>
+                        )}
                       </td>
 
                       {/* Actions */}
@@ -1553,6 +1683,86 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                   )}
                 </div>
 
+                {/* Status-Specific Highlight Banner */}
+                <div className="sm:col-span-2">
+                  {selectedCase.status === 'hearing' && (
+                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 flex items-center justify-between text-xs text-amber-950">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-amber-700 shrink-0" />
+                        <div>
+                          <span className="font-bold block">Status: 2) HEARING SCHEDULED</span>
+                          <span className="text-[11px] text-amber-800">
+                            Date of Hearing: <b>{selectedCase.nextHearingDate || 'Not Fixed'}</b>
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-amber-200/80 px-2 py-0.5 rounded">
+                        HEARING
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedCase.status === 'under_inquiry' && (
+                    <div className="p-3 bg-purple-50 rounded-xl border border-purple-300 flex items-center justify-between text-xs text-purple-950">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-purple-700 shrink-0" />
+                        <div>
+                          <span className="font-bold block">Status: 3) UNDER INQUIRY</span>
+                          <span className="text-[11px] text-purple-800">
+                            R.I. Name: <b>{selectedCase.riName || 'Designated RI Circle'}</b> • Date of Inquiry by RI: <b>{selectedCase.riInquiryDate || 'Pending'}</b>
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-purple-200/80 px-2 py-0.5 rounded">
+                        INSPECTION
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedCase.status === 'disposed' && (
+                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-300 flex items-center justify-between text-xs text-emerald-950">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+                        <div>
+                          <span className="font-bold block">Status: 5) DISPOSED (Mutation Allowed)</span>
+                          <span className="text-[11px] text-emerald-800">
+                            Allotted Khatian Number: <b className="font-mono text-sm text-emerald-900">{selectedCase.khatianNo || 'Not Entered'}</b>
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-emerald-200/80 px-2 py-0.5 rounded">
+                        COMPLETED
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedCase.status === 'rejected' && (
+                    <div className="p-3 bg-rose-50 rounded-xl border border-rose-300 flex items-center justify-between text-xs text-rose-950">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-rose-700 shrink-0" />
+                        <div>
+                          <span className="font-bold block">Status: 6) REJECTED</span>
+                          <span className="text-[11px] text-rose-800">
+                            Reason of Rejection: <b>{selectedCase.rejectionReason || 'Stated on Order Sheet'}</b>
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-rose-200/80 px-2 py-0.5 rounded">
+                        REJECTED
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedCase.status === 'case_registered' && (
+                    <div className="p-2.5 bg-blue-50 rounded-lg border border-blue-200 flex items-center justify-between text-xs text-blue-950">
+                      <span className="font-bold">Status: 1) CASE REGISTERED — Application docketed in system</span>
+                      <span className="text-[10px] font-mono font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                        REGISTERED
+                      </span>
+                    </div>
+                  )}
+                </div>
+
                 {/* Case Numbers & Identifiers */}
                 <div className="sm:col-span-2 pt-2 border-t border-slate-200">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-[11px]">
@@ -1789,27 +1999,30 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                   />
                 </div>
 
-                {/* Status */}
+                {/* Status Dropdown */}
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Status</label>
+                  <label className="font-bold text-slate-800 block mb-1">
+                    {t('Case Status *', 'কেসের বর্তমান অবস্থা (Status) *')}
+                  </label>
                   <select
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value as CaseStatus)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg outline-none"
+                    className="w-full h-9 px-3 bg-white border-2 border-indigo-400 focus:border-indigo-600 rounded-lg outline-none font-bold text-slate-900 shadow-2xs"
                   >
-                    <option value="hearing_scheduled">Hearing Scheduled</option>
-                    <option value="filed">Filed / Under Process</option>
-                    <option value="scrutiny">Under Scrutiny</option>
-                    <option value="order_reserved">Order Reserved</option>
-                    <option value="disposed">Disposed / Allowed</option>
-                    <option value="dismissed">Dismissed</option>
-                    <option value="appealed">Appealed</option>
+                    <option value="case_registered">1) CASE REGISTERED</option>
+                    <option value="hearing">2) HEARING</option>
+                    <option value="under_inquiry">3) UNDER INQUIRY</option>
+                    <option value="hearing_completed">4) HEARING COMPLETED</option>
+                    <option value="disposed">5) DISPOSED</option>
+                    <option value="rejected">6) REJECTED</option>
                   </select>
                 </div>
 
                 {/* Title */}
                 <div className="sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block mb-1">Subject / Case Title *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    {t('Subject / Case Title *', 'মামলার বিষয় / শিরোনাম *')}
+                  </label>
                   <input
                     type="text"
                     required
@@ -1822,7 +2035,9 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
 
                 {/* Party / Client */}
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Party / Client (CRM) *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    {t('Party / Client (CRM) *', 'মক্কেল / ক্লায়েন্ট *')}
+                  </label>
                   <select
                     value={formPartyId}
                     onChange={(e) => setFormPartyId(e.target.value)}
@@ -1839,7 +2054,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                 {/* Broker Name ("brocker name") */}
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">
-                    Broker / Agent / Mohurrir Name
+                    {t('Broker / Agent Name', 'দালাল বা মুহুরী (Broker Name)')}
                   </label>
                   <input
                     type="text"
@@ -1853,7 +2068,7 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                 {/* Broker Phone */}
                 <div>
                   <label className="font-semibold text-slate-700 block mb-1">
-                    Broker Contact Mobile
+                    {t('Broker Mobile', 'দালারের মোবাইল')}
                   </label>
                   <input
                     type="text"
@@ -1866,20 +2081,24 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
 
                 {/* Authority */}
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Court / Forum / Authority *</label>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    {t('Court / Forum / Authority *', 'আদালত বা কর্তৃপক্ষ *')}
+                  </label>
                   <input
                     type="text"
                     required
                     value={formCourt}
                     onChange={(e) => setFormCourt(e.target.value)}
-                    placeholder="e.g. Office of the BL&LRO (Circle 2)"
+                    placeholder="e.g. Office of the BL&LRO, Baruipur"
                     className="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg outline-none"
                   />
                 </div>
 
                 {/* Filing Date */}
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Filing Date</label>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    {t('Filing Date', 'ফাইলিংয়ের তারিখ')}
+                  </label>
                   <input
                     type="date"
                     value={formFilingDate}
@@ -1888,20 +2107,11 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                   />
                 </div>
 
-                {/* Next Hearing Date */}
-                <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Next Hearing Date</label>
-                  <input
-                    type="date"
-                    value={formNextHearingDate}
-                    onChange={(e) => setFormNextHearingDate(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-slate-300 rounded-lg outline-none font-mono font-bold text-indigo-700"
-                  />
-                </div>
-
                 {/* Opposite Party */}
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Opposite Party (If any)</label>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    {t('Opposite Party (If any)', 'বিবাদী / অপর পক্ষ')}
+                  </label>
                   <input
                     type="text"
                     value={formOppositeParty}
@@ -1912,90 +2122,388 @@ export const CaseTrackerView: React.FC<CaseTrackerViewProps> = ({
                 </div>
               </div>
 
-              {/* MUTATION SPECIFIC SECTION */}
-              {formType === 'mutation' && (
-                <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200 space-y-3">
-                  <div className="font-bold text-purple-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <FileCheck className="h-3.5 w-3.5 text-purple-700" />
-                    <span>Mutation Application & Officer Details</span>
+              {/* ================= CONDITIONAL STATUS ACTION PANELS ================= */}
+
+              {/* 2) IF HEARING: Date of Hearing Option is shown */}
+              {formStatus === 'hearing' && (
+                <div className="p-3.5 bg-amber-50/80 rounded-xl border border-amber-300 space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
+                      <Calendar className="h-4 w-4 text-amber-700" />
+                      <span>{t('2) Hearing Status: Date of Hearing Selection', '২) শুনানি অবস্থা: শুনানির তারিখ নির্ধারণ')}</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded">
+                      {t('Hearing Scheduled', 'শুনানি নির্ধারিত')}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                     <div>
-                      <label className="text-[11px] font-semibold text-slate-700 block mb-0.5">
-                        Application Number *
+                      <label className="text-[11px] font-bold text-slate-800 block mb-1">
+                        {t('Date of Hearing (Next Hearing Date) *', 'শুনানির তারিখ (Date of Hearing) *')}
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formNextHearingDate}
+                        onChange={(e) => setFormNextHearingDate(e.target.value)}
+                        className="w-full h-9 px-3 bg-white border-2 border-amber-400 focus:border-amber-600 rounded-lg outline-none font-mono font-bold text-amber-950 text-sm shadow-xs"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pb-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setFormNextHearingDate(todayStr)}
+                        className="h-9 px-3 text-xs font-bold text-amber-900 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors shadow-2xs"
+                      >
+                        {t('Today', 'আজ')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormNextHearingDate(
+                            new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+                          )
+                        }
+                        className="h-9 px-3 text-xs font-bold text-amber-900 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors shadow-2xs"
+                      >
+                        +7 {t('Days', 'দিন')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormNextHearingDate(
+                            new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]
+                          )
+                        }
+                        className="h-9 px-3 text-xs font-bold text-amber-900 bg-white hover:bg-amber-100 border border-amber-300 rounded-lg transition-colors shadow-2xs"
+                      >
+                        +14 {t('Days', 'দিন')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3) IF UNDER INQUIRY: Show Revenue Inspector Name & Date of Inquiry given by RI */}
+              {formStatus === 'under_inquiry' && (
+                <div className="p-3.5 bg-purple-50/80 rounded-xl border border-purple-300 space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-purple-900 text-xs">
+                      <Clock className="h-4 w-4 text-purple-700" />
+                      <span>{t('3) Under Inquiry Status: RI Name & Date of Inquiry', '৩) তদন্তাধীন অবস্থা: আর.আই-এর নাম ও তদন্তের তারিখ')}</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-purple-800 bg-purple-200/80 px-2 py-0.5 rounded">
+                      {t('RI Inspection Pending', 'আর.আই তদন্ত প্রক্রিয়াধীন')}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-800 block mb-1">
+                        {t('Revenue Inspector (R.I.) Name *', 'রাজস্ব পরিদর্শক (R.I.)-এর নাম *')}
                       </label>
                       <input
                         type="text"
-                        value={formApplicationNo}
-                        onChange={(e) => setFormApplicationNo(e.target.value)}
-                        placeholder="e.g. 2026/01/MUT/0842"
-                        className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded outline-none font-mono font-bold text-purple-900"
+                        required
+                        value={formRiName}
+                        onChange={(e) => setFormRiName(e.target.value)}
+                        placeholder="e.g. Sri Anup Roy, Gram Panchayat RI Circle"
+                        className="w-full h-9 px-3 bg-white border border-purple-300 focus:border-purple-600 rounded-lg outline-none font-semibold text-slate-900 text-xs"
                       />
                     </div>
 
                     <div>
+                      <label className="text-[11px] font-bold text-slate-800 block mb-1">
+                        {t('Date of Inquiry Given by the RI *', 'আর.আই কর্তৃক তদন্তের তারিখ (Date of Inquiry) *')}
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formRiInquiryDate}
+                        onChange={(e) => setFormRiInquiryDate(e.target.value)}
+                        className="w-full h-9 px-3 bg-white border-2 border-purple-400 focus:border-purple-600 rounded-lg outline-none font-mono font-bold text-purple-950 text-sm shadow-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 4) IF HEARING COMPLETED: Status confirmation note */}
+              {formStatus === 'hearing_completed' && (
+                <div className="p-3 bg-teal-50 rounded-xl border border-teal-300 flex items-center justify-between text-xs text-teal-900 animate-in fade-in duration-150">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-teal-700 shrink-0" />
+                    <div>
+                      <span className="font-bold block">
+                        {t('4) Hearing Completed — Final Order Reserved', '৪) শুনানি সম্পন্ন — চূড়ান্ত নির্দেশের অপেক্ষায়')}
+                      </span>
+                      <span className="text-[11px] text-teal-700">
+                        {t('All arguments and document verifications are completed.', 'উভয় পক্ষের শুনানি ও নথিপত্র যাচাই সম্পন্ন হয়েছে।')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 5) IF DISPOSED: Khatian Number Box is opened manually */}
+              {formStatus === 'disposed' && (
+                <div className="p-3.5 bg-emerald-50/80 rounded-xl border border-emerald-300 space-y-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-emerald-900 text-xs">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                      <span>{t('5) Disposed Status: Khatian Number Box (Manual)', '৫) নিষ্পত্তি অবস্থা: খতিয়ান নম্বর বক্স (ম্যানুয়ালি দিন)')}</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded">
+                      {t('Mutation Allowed', 'মিউটেশন মঞ্জুর')}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-800 block mb-1">
+                      {t('Khatian Number Box (Manually Opened) *', 'খতিয়ান নম্বর বক্স (Khatian Number Box — ম্যানুয়ালি লিখুন) *')}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formKhatianNo}
+                      onChange={(e) => setFormKhatianNo(e.target.value)}
+                      placeholder="e.g. LR Khatian No. 389/1 (Allotted)"
+                      className="w-full h-10 px-3 bg-white border-2 border-emerald-400 focus:border-emerald-600 rounded-lg outline-none font-mono font-bold text-emerald-950 text-base shadow-xs"
+                    />
+                    <span className="text-[10px] text-emerald-700 mt-1 block">
+                      {t(
+                        'Enter the final manual Khatian number allotted to this client upon mutation disposal.',
+                        'মিউটেশন নিষ্পত্তি হওয়ার পর মক্কেলের জন্য নির্ধারিত নতুন খতিয়ান নম্বরটি এখানে ম্যানুয়ালি লিখুন।'
+                      )}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 6) IF REJECTED: Reason of Rejected Box will show and filling options */}
+              {formStatus === 'rejected' && (
+                <div className="p-3.5 bg-rose-50/80 rounded-xl border border-rose-300 space-y-3 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-rose-900 text-xs">
+                      <AlertCircle className="h-4 w-4 text-rose-700" />
+                      <span>{t('6) Rejected Status: Reason of Rejected & Filling Options', '৬) খারিজ অবস্থা: খারিজের কারণ ও ফিলিং অপশন')}</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-rose-800 bg-rose-200/80 px-2 py-0.5 rounded">
+                      {t('Mutation Rejected', 'মিউটেশন আবেদন খারিজ')}
+                    </span>
+                  </div>
+
+                  {/* Preset Filling Options */}
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-800 block mb-1.5">
+                      {t('Quick Reason Filling Options (Click to auto-fill)', 'সহজ কারণ ফিলিং অপশন (ক্লিক করে নির্বাচন করুন)')}:
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {[
+                        'Lack of Registered Chain of Title / দলিলের ধারাবাহিকতার অভাব',
+                        'Area Claimed Exceeds Ceiling or Previous Khatian / খতিয়ানের বেশি জমি দাবি',
+                        'Title Dispute & Formal Objection Filed under Sec 50 / স্বত্ব বিরোধ ও আপত্তি দাখিল',
+                        'Applicant Failed to Appear at Scheduled Hearing / শুনানিতে অনুপস্থিতি',
+                        'Discrepancy in Plot Boundary & Mouza Map / নকশা ও দাগ নম্বরে অমিল',
+                        'Vested / Government / Bargadar Land / খাস জমি বা বর্গা রেকর্ডভুক্ত জমি',
+                        'Deed Registration Not Verified from SR Office / সাব-রেজিস্ট্রার অফিসের দলিল অসত্যায়িত',
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setFormRejectionReason(preset)}
+                          className="text-[10px] text-left p-1.5 bg-white hover:bg-rose-100 text-rose-900 border border-rose-200 rounded-md font-medium transition-colors"
+                        >
+                          • {preset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Reason of Rejection Box */}
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-800 block mb-1">
+                      {t('Reason of Rejected Box (Editable) *', 'খারিজের কারণ বক্স (Reason of Rejected Box) *')}
+                    </label>
+                    <textarea
+                      rows={2}
+                      required
+                      value={formRejectionReason}
+                      onChange={(e) => setFormRejectionReason(e.target.value)}
+                      placeholder={t(
+                        'Type or select the detailed reason of rejection as recorded by authority...',
+                        'কর্তৃপক্ষ কর্তৃক প্রদত্ত খারিজের সুনির্দিষ্ট কারণ এখানে লিখুন বা উপর থেকে নির্বাচন করুন...'
+                      )}
+                      className="w-full p-2.5 bg-white border-2 border-rose-300 focus:border-rose-600 rounded-lg outline-none font-medium text-slate-900 text-xs shadow-xs"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* MUTATION SPECIFIC SECTION (Pre-fixed with MUTE + Year + Auto BL&LRO Code) */}
+              {formType === 'mutation' && (
+                <div className="p-3.5 bg-purple-50/70 rounded-xl border border-purple-200 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-purple-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <FileCheck className="h-4 w-4 text-purple-700" />
+                      <span>{t('BL&LRO Office District & Block Selection (Auto-Code Collected)', 'বিএলএলআরও অফিস জেলা ও ব্লক নির্বাচন (অফিস কোড স্বয়ংক্রিয়)')}</span>
+                    </div>
+                    <span className="font-mono text-[11px] font-bold bg-purple-200 text-purple-900 px-2.5 py-0.5 rounded">
+                      BL&LRO Code: {formBlockCode}
+                    </span>
+                  </div>
+
+                  {/* District & Block Selectors */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 bg-white p-3 rounded-lg border border-purple-200">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                        {t('District (West Bengal) *', 'জেলা (পশ্চিমবঙ্গ) *')}
+                      </label>
+                      <select
+                        value={formDistrictId}
+                        onChange={(e) => handleDistrictChange(e.target.value)}
+                        className="w-full h-8 px-2 bg-slate-50 border border-slate-300 rounded font-semibold text-slate-900 outline-none text-xs"
+                      >
+                        {WB_BLLRO_DISTRICTS.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.name} ({d.distCode})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                        {t('Block & BL&LRO Office *', 'ব্লক ও বিএলএলআরও অফিস *')}
+                      </label>
+                      <select
+                        value={formBlockCode}
+                        onChange={(e) => handleBlockChange(e.target.value)}
+                        className="w-full h-8 px-2 bg-slate-50 border border-slate-300 rounded font-semibold text-purple-900 outline-none text-xs"
+                      >
+                        {WB_BLLRO_DISTRICTS.find((d) => d.id === formDistrictId)?.blocks.map((b) => (
+                          <option key={b.code} value={b.code}>
+                            {b.name} (Code: {b.code})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                        {t('Application Year (Inserting) *', 'আবেদনের সন / Year *')}
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={4}
+                        value={formApplicationYear}
+                        onChange={(e) => handleYearChange(e.target.value)}
+                        className="w-full h-8 px-2 bg-slate-50 border border-slate-300 rounded font-mono font-bold text-slate-900 outline-none text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-0.5">
+                        {t('Application Serial # *', 'আবেদন ক্রমিক নম্বর *')}
+                      </label>
+                      <input
+                        type="text"
+                        value={formApplicationSerial}
+                        onChange={(e) => handleSerialChange(e.target.value)}
+                        placeholder="0842"
+                        className="w-full h-8 px-2 bg-slate-50 border border-slate-300 rounded font-mono font-bold text-slate-900 outline-none text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Generated Application Number with MUTE Prefix */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="text-[11px] font-bold text-purple-900 block mb-0.5">
+                        {t(
+                          'Mutation Application Number (Pre-fixed with MUTE + Year + BL&LRO Code) *',
+                          'মিউটেশন আবেদন নম্বর (MUTE + সন + বিএলএলআরও কোড সহ গঠিত) *'
+                        )}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={formApplicationNo}
+                          onChange={(e) => setFormApplicationNo(e.target.value)}
+                          placeholder="MUTE/2026/1603/0842"
+                          className="w-full h-9 px-3 bg-white border-2 border-purple-400 focus:border-purple-600 rounded-lg outline-none font-mono font-bold text-purple-950 text-sm shadow-xs"
+                        />
+                      </div>
+                      <span className="text-[10px] text-purple-700 mt-0.5 block font-mono">
+                        Prefix: MUTE/{formApplicationYear}/{formBlockCode}/
+                      </span>
+                    </div>
+
+                    <div>
                       <label className="text-[11px] font-semibold text-slate-700 block mb-0.5">
-                        R.O. Name (Revenue Officer)
+                        {t('R.O. Name (Revenue Officer)', 'আর.ও. (রেভিনিউ অফিসার)')}
                       </label>
                       <input
                         type="text"
                         value={formRoName}
                         onChange={(e) => setFormRoName(e.target.value)}
                         placeholder="e.g. Sri Animesh Roy, WBLS"
-                        className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded outline-none"
+                        className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg outline-none text-xs"
                       />
                     </div>
 
                     <div>
                       <label className="text-[11px] font-semibold text-slate-700 block mb-0.5">
-                        R.I. Name (Revenue Inspector)
+                        {t('R.I. Name (Revenue Inspector)', 'আর.আই. (রেভিনিউ ইন্সপেক্টর)')}
                       </label>
                       <input
                         type="text"
                         value={formRiName}
                         onChange={(e) => setFormRiName(e.target.value)}
-                        placeholder="e.g. Kalyanpur GP RI Office"
-                        className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded outline-none"
+                        placeholder="e.g. Kalyanpur GP RI Circle"
+                        className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg outline-none text-xs"
                       />
                     </div>
 
                     <div>
                       <label className="text-[11px] font-semibold text-slate-700 block mb-0.5">
-                        Registered Deed No.
+                        {t('Registered Deed No.', 'রেজিস্ট্রিকৃত দলিল নম্বর')}
                       </label>
                       <input
                         type="text"
                         value={formDeedNo}
                         onChange={(e) => setFormDeedNo(e.target.value)}
                         placeholder="e.g. I-4921"
-                        className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded outline-none font-mono font-bold"
+                        className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg outline-none font-mono font-bold text-xs"
                       />
                     </div>
 
                     <div>
                       <label className="text-[11px] font-semibold text-slate-700 block mb-0.5">
-                        Deed Registration Year
+                        {t('Deed Registration Year', 'দলিল রেজিস্ট্রির সন')}
                       </label>
                       <input
                         type="text"
                         value={formDeedYear}
                         onChange={(e) => setFormDeedYear(e.target.value)}
                         placeholder="e.g. 2025"
-                        className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded outline-none font-mono"
+                        className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg outline-none font-mono text-xs"
                       />
                     </div>
 
                     <div>
                       <label className="text-[11px] font-semibold text-slate-700 block mb-0.5">
-                        Land Area / Share
+                        {t('Land Area / Share', 'জমির পরিমাণ বা অংশ')}
                       </label>
                       <input
                         type="text"
                         value={formLandArea}
                         onChange={(e) => setFormLandArea(e.target.value)}
                         placeholder="e.g. 0.08 Acre (5.5 Dec)"
-                        className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded outline-none font-mono"
+                        className="w-full h-9 px-2.5 bg-white border border-slate-300 rounded-lg outline-none font-mono text-xs"
                       />
                     </div>
                   </div>
