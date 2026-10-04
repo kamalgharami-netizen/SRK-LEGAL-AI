@@ -18,15 +18,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Build Vite application
+      - name: Build application
         run: npm run build
 
-      - name: Install Electron and Electron Builder
+      - name: Install Electron
         run: npm install --no-save electron electron-builder
 
       - name: Create Electron main file
@@ -68,10 +67,10 @@ jobs:
           });
           '@ | Set-Content -Encoding UTF8 electron-main.cjs
 
-      - name: Create Electron package configuration
+      - name: Configure Electron Builder
         shell: pwsh
         run: |
-          node -e "const fs=require('fs'); const p=require('./package.json'); p.main='electron-main.cjs'; p.build={appId:'com.srklegal.ai',productName:'SRK Legal AI',directories:{output:'release'},files:['dist/**/*','electron-main.cjs','package.json'],win:{target:[{target:'nsis',arch:['x64']}]},nsis:{oneClick:false,allowToChangeInstallationDirectory:true,createDesktopShortcut:true,createStartMenuShortcut:true}}; fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
+          node -e "const fs=require('fs'); const p=require('./package.json'); p.main='electron-main.cjs'; p.build={appId:'com.srklegal.ai',productName:'SRK Legal AI',directories:{output:'release'},files:['dist/**/*','electron-main.cjs','package.json'],win:{target:'nsis'},nsis:{oneClick:false,allowToChangeInstallationDirectory:true,createDesktopShortcut:true,createStartMenuShortcut:true}}; fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
 
       - name: Build Windows Installer
         run: npx electron-builder --win nsis
